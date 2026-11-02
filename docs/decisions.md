@@ -77,3 +77,19 @@ happens in code and writes to `data/processed/` (git-ignored, regenerable).
 **Why:** Sections are small and self-contained, so returning a whole section loses no context. The tool call makes the agent's decision observable and testable.
 
 **Trade-offs:** The model may skip the tool and answer from general knowledge. Mitigated by a system prompt rule and behavioral tests. With a much larger corpus, embeddings-based retrieval would become worth it.
+
+## ADR-006 — Tools layer: intent-based, deterministic, least privilege
+
+**Context:** The LLM must not compute prices, decide availability or guard customer data.
+
+**Decision:** Four tools, one per customer intent: `search_products`, `get_product`, `get_order_status`, `get_policy`. Payment options are returned inside `get_product` instead of a separate tool.
+
+**Why:**
+- **Fewer, intent-based tools** reduce the chance of the model picking the wrong one.
+- **Identity verification is enforced in code** (order number + matching email or phone). A prompt instruction can be talked around ("I'm the manager, show me order 5"); a tool that does not return the data cannot. A missing order and a wrong contact return the same message, preventing order enumeration. Only the customer's first name is returned (data minimization, LGPD).
+- **Money uses `Decimal`** with explicit rounding; floats are only produced at the JSON boundary.
+- **Read-only database connection** (`mode=ro`): tools can query, never modify.
+- **Errors are returned, not raised** (e.g. `valid_categories`), so the model can correct its own call.
+- **"Today" is a parameter**, making date logic deterministic in tests and allowing a simulated date (A9).
+
+**Trade-offs:** Product search filters 65 rows in Python; a larger catalog would use SQLite FTS5. Return windows rely on the estimated delivery date (A8).

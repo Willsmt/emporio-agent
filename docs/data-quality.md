@@ -29,3 +29,10 @@ the rule and its interpretation together. The original PDF is untouched.
 | A5 | Shipping to other cities depends on ZIP code, weight and dimensions, which the system lacks | Inform carriers and delivery times; the cost is calculated at checkout. |
 | A6 | Campaign discount ranges (§6.1), including Black Friday in November | Ranges describe campaigns in general; only promotions active in the system apply. |
 | A7 | "Suggest partner stores" but none are listed | Never invent partner store names. |
+
+## Assumptions made in the tools layer
+
+| ID | Finding | Assumption |
+|----|---------|------------|
+| A8 | Orders have no actual delivery date | `estimated_delivery` is used as the receipt date for return, exchange and warranty windows. |
+| A9 | Orders date from Oct 2025 to Mar 2026; at the real current date every return window has expired and "pending" orders are months old | The tools receive "today" as a parameter. The agent uses the real date by default, and it can be overridden to demonstrate open return windows. |
