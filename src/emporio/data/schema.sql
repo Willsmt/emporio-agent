@@ -57,3 +57,10 @@ CREATE TABLE promotions (
 
 CREATE UNIQUE INDEX one_active_promotion_per_product
     ON promotions(product_id) WHERE is_active = 1;
+
+CREATE TABLE policy_sections (
+    slug    TEXT PRIMARY KEY,
+    number  INTEGER NOT NULL UNIQUE,
+    title   TEXT NOT NULL,
+    content TEXT NOT NULL
+);

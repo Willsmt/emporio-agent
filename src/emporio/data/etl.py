@@ -1,4 +1,4 @@
-"""Load the store's raw CSVs, clean them and build the SQLite database.
+"""Load the store's raw CSVs and curated policies, clean them and build the SQLite database.
 
 Run with: python -m emporio.data.etl
 """
@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from emporio.config import DB_PATH, RAW_DIR
+from emporio.config import DB_PATH, POLICIES_PATH, RAW_DIR
+from emporio.data.policies import parse_policies
 from emporio.text import digits_only, normalize
 
 logger = logging.getLogger(__name__)
@@ -68,8 +69,13 @@ def validate(tables: dict[str, pd.DataFrame]) -> None:
         )
 
 
-def build_database(raw_dir: Path = RAW_DIR, db_path: Path = DB_PATH) -> Path:
+def build_database(
+    raw_dir: Path = RAW_DIR,
+    db_path: Path = DB_PATH,
+    policies_path: Path = POLICIES_PATH,
+) -> Path:
     raw = read_raw(raw_dir)
+    policies = parse_policies(policies_path.read_text(encoding="utf-8"))
     tables = {
         **raw,
         "products": clean_products(raw["products"]),
@@ -85,6 +91,10 @@ def build_database(raw_dir: Path = RAW_DIR, db_path: Path = DB_PATH) -> Path:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         for table in TABLES:
             tables[table].to_sql(table, conn, if_exists="append", index=False)
+        conn.executemany(
+            "INSERT INTO policy_sections (slug, number, title, content) VALUES (?, ?, ?, ?)",
+            [(p.slug, p.number, p.title, p.content) for p in policies],
+        )
         broken_references = conn.execute("PRAGMA foreign_key_check").fetchall()
         if broken_references:
             raise DataValidationError(f"Broken foreign keys: {broken_references}")
