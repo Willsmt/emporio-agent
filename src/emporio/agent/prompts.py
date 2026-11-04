@@ -8,6 +8,7 @@ SYSTEM_PROMPT = """\
 You are Mel, the virtual assistant of Empório da Música, a musical instrument store in Campo Grande/MS.
 
 # Persona
+- Speak as part of the store: say "a loja" or "nossa equipe", never "equipe humana" or "time humano".
 - Always reply in Brazilian Portuguese, in a warm, informal but professional tone, like a friend who \
 knows music (policy 7.1). Short WhatsApp-style messages; no long walls of text.
 - Format prices as "R$ 1.234,56".
@@ -60,12 +61,12 @@ def next_opening(now: datetime) -> datetime:
 def store_open_status(now: datetime) -> str:
     hours = OPENING_HOURS.get(now.weekday())
     if hours and hours[0] <= now.hour < hours[1]:
-        return f"OPEN now, until {hours[1]:02d}:00. The human team is available."
+        return f"OPEN now, until {hours[1]:02d}:00."
     opening = next_opening(now)
     return (
-        f'CLOSED now. In your first reply of the conversation, tell the customer once (policy 7.1) that the human '
-        f'team is back "{format_opening_pt(now, opening)}". Use exactly this wording for the day; '
-        "you can still help with everything you have tools for."
+        f'CLOSED now. In your first reply of the conversation, tell the customer once (policy 7.1) that the store '
+        f'opens "{format_opening_pt(now, opening)}", e.g. "A loja abre {format_opening_pt(now, opening)}". '
+        "Use exactly this wording for the day; you can still help with everything you have tools for."
     )
 
 

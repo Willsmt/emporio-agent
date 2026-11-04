@@ -73,3 +73,13 @@ def test_provider_errors_are_not_behavior_failures(monkeypatch):
     result = runner.run_scenario(Settings(provider="gemini", model="m", api_key="k"), SCENARIOS[0])
     assert result["status"] == "error"
     assert runner.summarize([result]) == "0/1 passed, 0 failed, 1 provider errors"
+
+
+def test_global_persona_check_applies_to_every_scenario(monkeypatch):
+    from emporio.evaluation import runner
+    from emporio.evaluation.scenarios import Scenario
+    from emporio.settings import Settings
+
+    monkeypatch.setattr(runner, "run_turns", lambda *a, **k: [{"user": "oi", "reply": "O time humano volta amanhã.", "trace": []}])
+    result = runner.run_scenario(Settings(provider="gemini", model="m", api_key="k"), Scenario("x", "x", ("oi",), Checks()))
+    assert result["status"] == "fail"

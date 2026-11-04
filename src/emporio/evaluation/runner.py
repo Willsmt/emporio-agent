@@ -18,6 +18,7 @@ from emporio.evaluation.scenarios import CONVERSATIONS, SCENARIOS, Conversation,
 from emporio.settings import Settings, SettingsError, load_settings
 
 REPORT_PATH = PROJECT_ROOT / "evals" / "report.md"
+GLOBAL_EXCLUDES = (r"equipe humana|time humano|atendente humano",)  # persona: the assistant speaks as the store
 CONVERSATIONS_DIR = PROJECT_ROOT / "conversations"
 
 
@@ -44,7 +45,8 @@ def run_scenario(settings: Settings, scenario: Scenario) -> dict:
     except ProviderError as exc:
         return {"scenario": scenario, "status": "error", "failures": [f"provider error: {str(exc)[:200]}"], "records": []}
     tools_used = [step["tool"] for record in records for step in record["trace"]]
-    result = evaluate(scenario.checks, tools_used, records[-1]["reply"])
+    checks = dataclasses.replace(scenario.checks, reply_excludes=scenario.checks.reply_excludes + GLOBAL_EXCLUDES)
+    result = evaluate(checks, tools_used, records[-1]["reply"])
     status = "pass" if result.passed else "fail"
     return {"scenario": scenario, "status": status, "failures": result.failures, "records": records}
 

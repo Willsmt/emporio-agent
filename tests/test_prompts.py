@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from emporio.agent.prompts import build_system_prompt, next_opening, store_open_status
 
 
@@ -42,3 +44,9 @@ def test_closed_on_saturday_afternoon_names_monday_without_relative_word():
 def test_prompt_requires_payment_conditions_for_a_specific_product():
     prompt = build_system_prompt(datetime(2026, 11, 3, 10, 30))
     assert "call get_product" in prompt and "PIX price" in prompt
+
+
+@pytest.mark.parametrize("now", [datetime(2026, 11, 3, 10, 0), datetime(2026, 11, 3, 22, 37)])
+def test_store_status_never_separates_a_human_team(now):
+    assert "human" not in store_open_status(now).lower()
+    assert "A loja abre" in store_open_status(datetime(2026, 11, 3, 22, 37))

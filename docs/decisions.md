@@ -176,3 +176,11 @@ On re-check, the "back tomorrow, Saturday" reply was **correct**. The recording 
 ### ADR-013 amendment — demo mode, secure by default
 
 Showing the model, the provider and the tool calls to customers would disclose internal details: it helps fingerprint the stack and hands out a map of the tools for prompt-injection attempts, and public Swagger docs expose the whole API. For a technical reviewer, though, the tool trace is the best evidence that the agent queries real data. A server-side `DEMO_MODE` flag (off by default) decides it: when off, the API does not send the trace at all (not merely hidden in the page), `/health` omits the model and `/api/docs` returns 404; when on, the page shows a banner explaining that the extra details exist for evaluation only.
+
+## ADR-014 — Persona: the assistant speaks as the store
+
+**Context:** When the store was closed, the agent said "o time humano volta amanhã às 9h". Policy 7.1 asks the assistant to tell the customer when service resumes; separating "the human team" from the assistant breaks the persona and makes the customer feel handed to a second-class channel.
+
+**Decision:** The computed store status now says when "a loja abre" (with the relative day still computed in code), the persona rule forbids "equipe humana"/"time humano" (use "a loja" or "nossa equipe"), and the evaluation runner applies a global check to every scenario that fails any reply containing those phrases.
+
+**Why:** Tone is part of the product. A global check keeps a persona rule from regressing silently in scenarios that were not written for it.
