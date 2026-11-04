@@ -115,3 +115,13 @@ happens in code and writes to `data/processed/` (git-ignored, regenerable).
 ### ADR-007 amendment — default Gemini model
 
 During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILABLE` (high demand) repeatedly, even with retries. The default changed to `gemini-3.5-flash` (GA, supported until at least May 2027), which answered correctly on the first try. A reviewer runs the agent once; availability matters more than being on the newest model. `gemini-3.8-flash` remains available through `LLM_MODEL`.
+
+## ADR-009 — Behavioral evaluation harness
+
+**Context:** Unit tests prove the code; they cannot prove the model uses it well. LLM output is non-deterministic: in two manual runs the agent announced the closed store once and skipped it once.
+
+**Decision:** `python -m emporio.evaluation` runs 17 scenarios derived from the challenge and the policy manual against the real model. Each scenario checks which tools were called (from the agent's trace) and regexes that must or must not appear in the final reply (accent- and case-insensitive). Results go to `evals/report.md`. The same runner records the example conversations (`--conversations`) from real executions, including the tool trace. The check logic and the runner are unit-tested offline with the fake provider.
+
+**Why:** Behavior regressions (inventing a discount, leaking an order, computing installments in the model) are the failures that matter in a customer-facing agent, and they only show up when the real model runs. Recording the example conversations from the same harness keeps them reproducible.
+
+**Trade-offs:** Regex checks are approximate (a correct reply phrased differently can fail, and vice versa); one run is a sample, not a guarantee. A larger setup would run each scenario several times and track pass rates over model and prompt versions, possibly with an LLM-as-judge for tone.
