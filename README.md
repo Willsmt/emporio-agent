@@ -14,7 +14,7 @@ chooses which tool to call and turns the result into a friendly answer.
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Live demo | [Live demo](#live-demo) |
 | Technical decisions, in short                                | [Technical decisions](#technical-decisions)                                                                    |
-| Decision log (15 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
+| Decision log (16 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
 | Data quality findings and assumptions                        | [`docs/data-quality.md`](docs/data-quality.md)                                                                 |
 | Behavioral evaluation report (19/19)                         | [`evals/report.md`](evals/report.md)                                                                           |
 | Example conversations (5)                                    | [`conversations/`](conversations/)                                                                             |
@@ -51,7 +51,7 @@ Requires Python 3.11+ (CI runs 3.11, 3.12 and 3.13) and an API key for Gemini or
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl        # builds data/processed/emporio.db from data/raw + data/curated
-pytest -q                         # 128 offline tests, no API calls
+pytest -q                         # 129 offline tests, no API calls
 cp .env.example .env              # set LLM_PROVIDER and LLM_API_KEY
 ```
 
@@ -169,7 +169,7 @@ providers are supported.
 
 | Job                          | Checks                                                                                                               |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `tests (3.11 / 3.12 / 3.13)` | 128 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
+| `tests (3.11 / 3.12 / 3.13)` | 129 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
 | `security (bandit + pip-audit)`                | Bandit (static analysis) and pip-audit (known vulnerabilities in dependencies)                                       |
 | `secrets (gitleaks)`                    | gitleaks over the full git history                                                                                   |
 | `complexity (no block ranked D or worse)`                 | No function ranked D or worse in cyclomatic complexity                                                               |

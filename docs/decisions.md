@@ -192,3 +192,19 @@ Showing the model, the provider and the tool calls to customers would disclose i
 **Decision:** Instrument-type words and connectors are ignored in product queries (the category filter covers them); `unavailable_matches` is only returned when no available product matched; the `get_product` description states that alternatives already include prices; the step limit rose from 6 to 8 for legitimate multi-tool turns; the regex accepts "prazo ... vai até".
 
 **Why:** Each fix targets the cause seen in the trace, and each bug became a unit test. The regression in (1) is a reminder that fixes need the full evaluation suite re-run, not only the scenario that motivated them.
+
+## ADR-016 — Search results carry the string type from the catalog specs
+
+**Context.** Testing the live demo, the question "Quais violões até R$ 1000?" got an answer grouped into nylon and
+steel. The grouping was right, but `search_products` returned only name, price and availability. For 11 of the 12
+guitars the name says "Nylon" or "Aço"; for "Tagima Woodstock Dreadnought Natural" it does not, so the model placed
+it under steel by inference ("dreadnoughts are usually steel"). It was correct by luck, not by data.
+
+**Decision.** `summarize` now adds `strings` (`nylon` / `steel`) from the product's `specs` JSON when present, so search
+results carry the attribute the model needs to group or filter by string type.
+
+**Evidence.** The data had the answer all along: every guitar has `"strings"` in `specs` (product 91 is `steel`). A
+unit test pins product 91 to `steel`, the case the name does not reveal.
+
+**Consequences.** One more field per product in search results (only for products with strings). Same principle as
+the rest of the design: facts come from tools, the model only words them.

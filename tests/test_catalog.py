@@ -104,3 +104,11 @@ def test_generic_query_with_available_results_does_not_list_unavailable_products
     result = search_products(conn, query="violões", category="Violões", max_price=1000, available_only=True)
     assert result["count"] == 12
     assert "unavailable_matches" not in result
+
+
+def test_search_results_carry_string_type_from_specs(conn):
+    result = search_products(conn, category="Violões", max_price=1000, available_only=True)
+    strings = {p["product_id"]: p.get("strings") for p in result["products"]}
+    assert strings[91] == "steel"  # "Tagima Woodstock Dreadnought Natural": the name does not say it
+    assert strings[83] == "nylon"
+    assert set(strings.values()) <= {"nylon", "steel"}

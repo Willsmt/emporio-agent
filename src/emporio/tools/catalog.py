@@ -1,4 +1,5 @@
 """Product search and details, applying availability rules (policy 7.3)."""
+import json
 import sqlite3
 from dataclasses import dataclass
 
@@ -37,7 +38,7 @@ def availability(status: str, stock: int) -> str:
 def summarize(row: sqlite3.Row) -> dict:
     list_price = to_money(row["price_brl"])
     promo = row["promotion_percent"]
-    return {
+    product = {
         "product_id": row["product_id"],
         "name": row["name"],
         "category": row["category"],
@@ -46,6 +47,11 @@ def summarize(row: sqlite3.Row) -> dict:
         "promotion": {"name": row["promotion_name"], "percent": promo} if promo else None,
         "price": float(apply_discount(list_price, promo)) if promo else float(list_price),
     }
+    # String type comes from the catalog specs, so the model never has to guess it from the product name.
+    strings = json.loads(row["specs"] or "{}").get("strings")
+    if strings:
+        product["strings"] = strings
+    return product
 
 
 def list_categories(conn: sqlite3.Connection) -> list[str]:
