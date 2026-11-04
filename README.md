@@ -12,6 +12,7 @@ chooses which tool to call and turns the result into a friendly answer.
 
 | What                                                         | Where                                                                                                          |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Technical decisions, in short                                | [Technical decisions](#technical-decisions)                                                                    |
 | Decision log (15 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
 | Data quality findings and assumptions                        | [`docs/data-quality.md`](docs/data-quality.md)                                                                 |
 | Behavioral evaluation report (19/19)                         | [`evals/report.md`](evals/report.md)                                                                           |
@@ -96,6 +97,32 @@ not left to the model.
 **Web.** FastAPI with in-memory sessions, per-IP sliding-window rate limit, a daily message cap, input size limit,
 and transcripts with e-mails and phones masked before storage. The page is plain HTML with an XSS-safe renderer.
 
+## Technical decisions
+
+The challenge leaves these choices open and asks for the reasoning. Each one has a full ADR in
+[`docs/decisions.md`](docs/decisions.md); this is the short version.
+
+| Decision             | Choice                                                                               | Why                                                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent approach       | **Native function calling**, own loop, no agent framework                            | Four tools and one loop do not need LangChain or LlamaIndex. Owning the loop keeps it small, readable and fully testable offline with a scripted fake LLM.                                                        |
+| Why not a SQL agent  | Tools with fixed queries                                                             | Letting the model write SQL means it could skip the identity check on orders or compute prices itself. Business rules must be enforced by code, not requested in a prompt.                                        |
+| Retrieval            | **No vector RAG**; `get_policy` returns whole policy sections                        | The manual is short and well structured. Exact sections are deterministic and cheaper than embeddings, with no chunking or ranking errors to tune. RAG becomes worth it when the knowledge base grows.            |
+| Model and provider   | `gemini-3.5-flash` by default, `gpt-6-luna` (OpenAI) as an alternative               | Both have reliable tool calling and low cost. A newer Gemini model was dropped after repeated 503 errors. The provider is one setting, because the loop talks to an `LLMProvider` protocol.                       |
+| Prompt strategy      | Short persona + numbered rules; facts only from tools                                | The prompt holds behavior, never data. The only facts it receives are computed in Python (current store time and whether the store is open). A rule was added only after a failing scenario showed it was needed. |
+| Interface            | Terminal (`--trace`) for development, FastAPI + HTML page for demo                   | The terminal shows each tool call while iterating; the web page is what a reviewer or the store staff would use.                                                                                                  |
+| Conversation history | Kept per session, in memory, for 30 minutes; transcripts stored with contacts masked | Multi-turn context is needed ("and the price in PIX?"). Long-term memory across visits was left out on purpose: there is no customer login, and keeping personal data without a need conflicts with LGPD.         |
+| Data treatment       | ETL into SQLite with constraints, curated policy Markdown                            | The data had duplicates and the manual contradicts itself; fixing that once, with tests, is safer than asking the model to cope with it on every message.                                                         |
+
+### Assumptions
+
+Where the challenge or the data was ambiguous, I made a reasonable assumption and wrote it down:
+
+- The store's clock is `America/Campo_Grande`, the store's own timezone, not the server's.
+- Contradictions in the policy manual are resolved in "Esclarecimento" notes in the curated file, each one listed in
+  [`docs/data-quality.md`](docs/data-quality.md) with the reasoning.
+- Order data is personal: the agent only discusses an order after the customer confirms the e-mail or phone on file.
+- Accessories and services the store does not list are treated as out of scope, and the agent says so instead of guessing.
+
 ## Evaluation
 
 ```bash
@@ -143,6 +170,16 @@ command above, and the report is committed as evidence.
   evaluation covers the known failure modes, not every possible question.
 - **No real store integrations.** Stock, orders and policies come from the provided files, not from live systems.
 - **Portuguese only** for customers; the code and docs are in English.
+
+## With more time
+
+- Move sessions and rate limits to Redis and add a lockout per order number on the identity check.
+- Add an LLM-as-a-judge layer to the evaluation for tone and policy faithfulness, plus paraphrased versions of each
+  scenario to measure robustness.
+- Observability: trace each conversation (tool calls, latency, tokens and cost per answer) with OpenTelemetry or Langfuse.
+- Stream answers to the web page, so long replies feel faster.
+- A handoff flow: when the agent cannot help, open a ticket for the staff with the conversation summary.
+- Connect the tools to the store's real systems instead of exported files.
 
 ## How I used AI in this project
 
