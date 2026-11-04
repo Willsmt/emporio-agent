@@ -125,3 +125,13 @@ During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILA
 **Why:** Behavior regressions (inventing a discount, leaking an order, computing installments in the model) are the failures that matter in a customer-facing agent, and they only show up when the real model runs. Recording the example conversations from the same harness keeps them reproducible.
 
 **Trade-offs:** Regex checks are approximate (a correct reply phrased differently can fail, and vice versa); one run is a sample, not a guarantee. A larger setup would run each scenario several times and track pass rates over model and prompt versions, possibly with an LLM-as-judge for tone.
+
+## ADR-010 — Quota-aware execution: client-side pacing and error classification
+
+**Context:** The Gemini free tier allows about 5 requests per minute per model. One customer message takes 2–3 model calls, so the evaluation run hit `429 RESOURCE_EXHAUSTED` after two scenarios, and those quota errors were reported as behavior failures.
+
+**Decision:** `RateLimitedProvider`, a Decorator around any provider, enforces a minimum interval between model calls when `LLM_MIN_INTERVAL_SECONDS` is set (13 s fits the free tier). The evaluation report separates `pass`/`fail` (agent behavior) from `error` (provider failures such as quota or outage), and Ctrl+C writes a partial report.
+
+**Why:** Pacing is a cross-cutting concern; a decorator adds it without touching the adapters or the agent loop (open/closed principle), and a fake clock tests it without waiting. Mixing infrastructure errors with behavior failures would make the evaluation misleading.
+
+**Trade-offs:** Pacing makes free-tier runs slow (~10 minutes for all scenarios). It is a fixed interval, not adaptive to the provider's `retryDelay`.

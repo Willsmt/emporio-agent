@@ -51,10 +51,25 @@ def test_runner_writes_report_and_transcript_offline(monkeypatch, tmp_path, db_p
     scenario = Scenario("price", "price", ("Quanto custa?",),
                         Checks(tools_called=("get_product",), reply_matches=(r"2\.089,05",)))
     result = runner.run_scenario(settings, scenario)
-    assert result["passed"]
+    assert result["status"] == "pass"
     report = runner.write_report(settings, [result]).read_text(encoding="utf-8")
-    assert "1/1 scenarios passed" in report
+    assert "1/1 passed, 0 failed, 0 provider errors" in report
 
     transcript = runner.write_conversation(settings, Conversation("t", "T", "why", ("Quanto custa?",))).read_text(encoding="utf-8")
     assert "**Mel:** Custa R$ 2.199,00" in transcript
     assert "get_product" in transcript
+
+
+def test_provider_errors_are_not_behavior_failures(monkeypatch):
+    from emporio.agent.providers.base import ProviderError
+    from emporio.evaluation import runner
+    from emporio.evaluation.scenarios import SCENARIOS
+    from emporio.settings import Settings
+
+    def quota_exceeded(*args, **kwargs):
+        raise ProviderError("429 RESOURCE_EXHAUSTED")
+
+    monkeypatch.setattr(runner, "run_turns", quota_exceeded)
+    result = runner.run_scenario(Settings(provider="gemini", model="m", api_key="k"), SCENARIOS[0])
+    assert result["status"] == "error"
+    assert runner.summarize([result]) == "0/1 passed, 0 failed, 1 provider errors"

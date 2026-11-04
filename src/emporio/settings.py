@@ -20,6 +20,7 @@ class Settings:
     model: str
     api_key: str
     store_today: date | None = None
+    min_interval_seconds: float = 0.0
 
     def now(self) -> datetime:
         current = datetime.now(STORE_TIMEZONE)
@@ -44,9 +45,16 @@ def load_settings() -> Settings:
     except ValueError as exc:
         raise SettingsError(f"STORE_TODAY must be YYYY-MM-DD, got '{raw_today}'") from exc
 
+    raw_interval = os.getenv("LLM_MIN_INTERVAL_SECONDS", "").strip()
+    try:
+        min_interval = float(raw_interval) if raw_interval else 0.0
+    except ValueError as exc:
+        raise SettingsError(f"LLM_MIN_INTERVAL_SECONDS must be a number, got '{raw_interval}'") from exc
+
     return Settings(
         provider=provider,
         model=os.getenv("LLM_MODEL", "").strip() or DEFAULT_MODELS[provider],
         api_key=api_key,
         store_today=store_today,
+        min_interval_seconds=min_interval,
     )

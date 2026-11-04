@@ -34,14 +34,24 @@ def run_turns(settings: Settings, turns: tuple[str, ...], store_today: date | No
     return records
 
 
+STATUS_ICONS = {"pass": "✅", "fail": "❌", "error": "⚠️"}
+
+
 def run_scenario(settings: Settings, scenario: Scenario) -> dict:
+    """Status is "pass"/"fail" for the agent's behavior, or "error" when the provider failed (quota, outage)."""
     try:
         records = run_turns(settings, scenario.turns, scenario.store_today)
     except ProviderError as exc:
-        return {"scenario": scenario, "passed": False, "failures": [f"provider error: {exc}"], "records": []}
+        return {"scenario": scenario, "status": "error", "failures": [f"provider error: {str(exc)[:200]}"], "records": []}
     tools_used = [step["tool"] for record in records for step in record["trace"]]
     result = evaluate(scenario.checks, tools_used, records[-1]["reply"])
-    return {"scenario": scenario, "passed": result.passed, "failures": result.failures, "records": records}
+    status = "pass" if result.passed else "fail"
+    return {"scenario": scenario, "status": status, "failures": result.failures, "records": records}
+
+
+def summarize(results: list[dict]) -> str:
+    counts = {status: sum(r["status"] == status for r in results) for status in STATUS_ICONS}
+    return f"{counts['pass']}/{len(results)} passed, {counts['fail']} failed, {counts['error']} provider errors"
 
 
 def format_trace(trace: list[dict]) -> str:
@@ -49,26 +59,26 @@ def format_trace(trace: list[dict]) -> str:
 
 
 def write_report(settings: Settings, results: list[dict]) -> Path:
-    passed = sum(r["passed"] for r in results)
     lines = [
         "# Behavioral evaluation report",
         "",
         f"- Model: `{settings.provider}/{settings.model}`",
         f"- Run at: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-        f"- Result: **{passed}/{len(results)} scenarios passed**",
+        f"- Result: **{summarize(results)}**",
         "",
         "LLM output is non-deterministic: this is a sample run, not a guarantee. Checks are regex-based and "
-        "accent-insensitive; tool checks use the agent's tool trace.",
+        "accent-insensitive; tool checks use the agent's tool trace. ⚠️ marks provider errors (quota, outage), "
+        "which say nothing about the agent's behavior.",
         "",
         "| Scenario | Description | Result | Tools used |",
         "|---|---|---|---|",
     ]
     for r in results:
         trace = [step for record in r["records"] for step in record["trace"]]
-        lines.append(f"| `{r['scenario'].id}` | {r['scenario'].description} | {'✅' if r['passed'] else '❌'} | {format_trace(trace)} |")
-    failed = [r for r in results if not r["passed"]]
+        lines.append(f"| `{r['scenario'].id}` | {r['scenario'].description} | {STATUS_ICONS[r['status']]} | {format_trace(trace)} |")
+    failed = [r for r in results if r["status"] != "pass"]
     if failed:
-        lines += ["", "## Failures", ""]
+        lines += ["", "## Failures and errors", ""]
         for r in failed:
             reply = r["records"][-1]["reply"] if r["records"] else "(no reply)"
             lines += [f"### `{r['scenario'].id}`", "", *[f"- {f}" for f in r["failures"]], "", "Reply:", "", f"> {reply.replace(chr(10), chr(10) + '> ')}", ""]
@@ -120,14 +130,16 @@ def main(argv: list[str] | None = None) -> int:
 
     selected = [s for s in SCENARIOS if not args.only or s.id in args.only]
     results = []
-    for scenario in selected:
-        result = run_scenario(settings, scenario)
-        print(f"{'PASS' if result['passed'] else 'FAIL'}  {scenario.id}  {'; '.join(result['failures'])}", flush=True)
-        results.append(result)
+    try:
+        for scenario in selected:
+            result = run_scenario(settings, scenario)
+            print(f"{result['status'].upper():5} {scenario.id}  {'; '.join(result['failures'])}", flush=True)
+            results.append(result)
+    except KeyboardInterrupt:
+        print("\nInterrupted: writing a partial report.")
     path = write_report(settings, results)
-    passed = sum(r["passed"] for r in results)
-    print(f"\n{passed}/{len(results)} passed — report: {path}")
-    return 0 if passed == len(results) else 2
+    print(f"\n{summarize(results)} — report: {path}")
+    return 0 if results and all(r["status"] == "pass" for r in results) else 2
 
 
 if __name__ == "__main__":

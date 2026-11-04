@@ -6,7 +6,7 @@ from emporio.settings import SettingsError, load_settings
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
     monkeypatch.setattr("emporio.settings.load_dotenv", lambda: None)  # ignore the developer's .env
-    for var in ("LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY", "STORE_TODAY"):
+    for var in ("LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY", "STORE_TODAY", "LLM_MIN_INTERVAL_SECONDS"):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -32,3 +32,14 @@ def test_invalid_store_today(monkeypatch):
     monkeypatch.setenv("STORE_TODAY", "02/20/2026")
     with pytest.raises(SettingsError, match="YYYY-MM-DD"):
         load_settings()
+
+
+def test_rate_limit_setting(monkeypatch):
+    from emporio.agent.providers import create_provider
+    from emporio.agent.providers.rate_limit import RateLimitedProvider
+
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("LLM_MIN_INTERVAL_SECONDS", "13")
+    settings = load_settings()
+    assert settings.min_interval_seconds == 13.0
+    assert isinstance(create_provider(settings), RateLimitedProvider)
