@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from google.genai import types
 
-from emporio.agent.providers.gemini import GeminiProvider
+from emporio.agent.providers.gemini import RETRY_OPTIONS, GeminiProvider
 from emporio.agent.providers.openai_provider import OpenAIProvider
 from emporio.agent.types import ToolCall, ToolSpec
 
@@ -60,3 +60,9 @@ def test_openai_tool_results_are_json_strings():
     items = provider.tool_result_items([(ToolCall("call_9", "get_product", {}), {"nome": "Violão"})])
     assert items[0]["call_id"] == "call_9"
     assert json.loads(items[0]["output"]) == {"nome": "Violão"}
+
+
+def test_gemini_retries_transient_errors():
+    assert RETRY_OPTIONS.attempts == 4
+    assert {429, 503} <= set(RETRY_OPTIONS.http_status_codes)
+    GeminiProvider(api_key="fake-key", model="m")  # builds a real client offline with the retry options

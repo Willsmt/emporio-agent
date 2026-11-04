@@ -7,13 +7,16 @@ from google.genai import errors, types
 from emporio.agent.providers.base import ProviderError
 from emporio.agent.types import ModelTurn, ToolCall, ToolSpec
 
+# Transient errors (rate limit, overload) are retried with exponential backoff by the SDK.
+RETRY_OPTIONS = types.HttpRetryOptions(attempts=4, initial_delay=1.0, max_delay=8.0, http_status_codes=[429, 500, 503, 504])
+
 
 class GeminiProvider:
     name = "gemini"
 
     def __init__(self, api_key: str, model: str, client: Any | None = None):
         self.model = model
-        self.client = client or genai.Client(api_key=api_key)
+        self.client = client or genai.Client(api_key=api_key, http_options=types.HttpOptions(retry_options=RETRY_OPTIONS))
 
     @staticmethod
     def build_tools(tools: list[ToolSpec]) -> list[types.Tool]:
