@@ -28,3 +28,11 @@ emporio = ["data/schema.sql", "web/static/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["llm: calls a real LLM provider (requires LLM_API_KEY); skipped otherwise"]
+
+[tool.coverage.run]
+source = ["emporio"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
