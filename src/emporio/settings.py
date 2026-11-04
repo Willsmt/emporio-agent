@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 STORE_TIMEZONE = ZoneInfo("America/Campo_Grande")
-DEFAULT_MODELS = {"gemini": "gemini-3.8-flash", "openai": "gpt-6-luna"}
+DEFAULT_MODELS = {"gemini": "gemini-3.5-flash", "openai": "gpt-6-luna"}
 
 
 class SettingsError(Exception):

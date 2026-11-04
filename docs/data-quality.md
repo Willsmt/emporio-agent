@@ -36,3 +36,4 @@ the rule and its interpretation together. The original PDF is untouched.
 |----|---------|------------|
 | A8 | Orders have no actual delivery date | `estimated_delivery` is used as the receipt date for return, exchange and warranty windows. |
 | A9 | Orders date from Oct 2025 to Mar 2026; at the real current date every return window has expired and "pending" orders are months old | The tools receive "today" as a parameter. The agent uses the real date by default, and it can be overridden to demonstrate open return windows. |
+| A10 | The policy manual says the store is closed on holidays but lists none | The agent computes opening status and next opening time from the weekly schedule only; holidays are not detected. |

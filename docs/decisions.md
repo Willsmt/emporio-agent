@@ -111,3 +111,7 @@ happens in code and writes to `data/processed/` (git-ignored, regenerable).
 **Why:** The loop is where an agent fails in production: infinite tool loops, crashes on a malformed call, corrupted history after a timeout, personal data in logs. Each safeguard has a test using a scripted fake provider, so the loop is verified offline, deterministically and at no API cost.
 
 **Trade-offs:** The fake provider proves the loop, not the model's judgment; model behavior is evaluated separately with real calls.
+
+### ADR-007 amendment — default Gemini model
+
+During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILABLE` (high demand) repeatedly, even with retries. The default changed to `gemini-3.5-flash` (GA, supported until at least May 2027), which answered correctly on the first try. A reviewer runs the agent once; availability matters more than being on the newest model. `gemini-3.8-flash` remains available through `LLM_MODEL`.

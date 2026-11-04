@@ -4,7 +4,7 @@ import sqlite3
 from emporio.text import normalize
 from emporio.tools.pricing import apply_discount, payment_summary, to_money
 
-MAX_RESULTS = 10
+MAX_RESULTS = 15
 MAX_ALTERNATIVES = 3
 
 PRODUCT_QUERY = """
@@ -68,9 +68,13 @@ def search_products(
             continue
         results.append(product)
 
+    results.sort(key=lambda p: p["availability"] != "available")  # stable: available first, then by price
     response = {"count": len(results), "products": results[:MAX_RESULTS]}
     if len(results) > MAX_RESULTS:
-        response["note"] = f"Showing the {MAX_RESULTS} cheapest matches. Refine the search for more."
+        response["note"] = (
+            f"Showing {MAX_RESULTS} of {len(results)} matches (available first, then by price). "
+            "Tell the customer more options exist and offer to narrow the search."
+        )
     if category_key and not any(normalize(c) == category_key for c in list_categories(conn)):
         response["error"] = "Unknown category"
         response["valid_categories"] = list_categories(conn)

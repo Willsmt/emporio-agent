@@ -14,8 +14,21 @@ def test_search_by_category_and_max_price_available_only(conn):
     assert 96 not in ids and 113 not in ids  # out of stock / discontinued
     assert all(p["price"] <= 1000 and p["availability"] == "available" for p in result["products"])
     assert result["count"] == 12
-    assert len(result["products"]) == 10
-    assert "note" in result
+    assert len(result["products"]) == 12
+    assert "note" not in result
+
+
+def test_available_products_are_ranked_before_unavailable_ones(conn):
+    products = search_products(conn, category="Violões")["products"]
+    flags = [p["availability"] == "available" for p in products]
+    assert flags == sorted(flags, reverse=True)
+
+
+def test_note_when_results_are_truncated(conn):
+    result = search_products(conn)
+    assert result["count"] == 65
+    assert len(result["products"]) == 15
+    assert "65" in result["note"]
 
 
 def test_max_price_uses_promotional_price(conn):
