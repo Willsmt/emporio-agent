@@ -72,7 +72,7 @@ SCENARIOS = [
              Checks(tools_called=("get_order_status",), reply_matches=(r"7 dias|sete dias", r"expir|venc|encerr|terminou|acabou|passou|fora do prazo|ultrapass|nao esta mais"))),
     Scenario("return_window_open", "Regret return inside the window, on a simulated date (STORE_TODAY)",
              ("Me arrependi da compra do pedido 7 e quero devolver. Meu e-mail é leticia.rocha@jmail.com",),
-             Checks(tools_called=("get_order_status",), reply_matches=(r"pode|possivel|dentro do (prazo|periodo)|ainda esta no prazo|tem direito",),
+             Checks(tools_called=("get_order_status",), reply_matches=(r"pode|possivel|dentro do (prazo|periodo)|ainda esta no prazo|tem direito|prazo .{0,40}vai ate",),
                     reply_excludes=(r"expirou|vencido|terminou|fora do prazo",)),
              store_today=OPEN_RETURN_WINDOW_DATE),
     Scenario("order_item_category", "Order items are described with their real category (a ukulele, not a guitar)",

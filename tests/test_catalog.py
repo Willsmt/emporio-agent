@@ -92,3 +92,15 @@ def test_available_only_reports_hidden_exact_matches(conn):
 
 def test_category_browsing_does_not_list_unavailable_products(conn):
     assert "unavailable_matches" not in search_products(conn, category="Violões", available_only=True)
+
+
+def test_instrument_type_words_do_not_break_the_search(conn):
+    # "violão" (violao) is not a substring of the category "violoes": type words are ignored, the category filter covers them
+    result = search_products(conn, query="Shelby SN-7C violão 7 cordas", category="Violões")
+    assert [p["product_id"] for p in result["products"]] == [113]
+
+
+def test_generic_query_with_available_results_does_not_list_unavailable_products(conn):
+    result = search_products(conn, query="violões", category="Violões", max_price=1000, available_only=True)
+    assert result["count"] == 12
+    assert "unavailable_matches" not in result

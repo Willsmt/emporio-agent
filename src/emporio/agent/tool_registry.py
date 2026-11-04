@@ -42,7 +42,9 @@ def build_tools(conn: sqlite3.Connection, today: Callable[[], date]) -> list[Too
             name="get_product",
             description=(
                 "Full details of one product by id: description, specs, availability, prices per payment "
-                "method (PIX, debit, boleto, credit card installments) or, if unavailable, similar alternatives."
+                "method (PIX, debit, boleto, credit card installments) or, if unavailable, similar alternatives. "
+                "Alternatives already include name, availability and price: do not call get_product for them "
+                "unless the customer asks about one."
             ),
             parameters={
                 "type": "object",

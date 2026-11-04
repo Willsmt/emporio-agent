@@ -184,3 +184,11 @@ Showing the model, the provider and the tool calls to customers would disclose i
 **Decision:** The computed store status now says when "a loja abre" (with the relative day still computed in code), the persona rule forbids "equipe humana"/"time humano" (use "a loja" or "nossa equipe"), and the evaluation runner applies a global check to every scenario that fails any reply containing those phrases.
 
 **Why:** Tone is part of the product. A global check keeps a persona rule from regressing silently in scenarios that were not written for it.
+
+## ADR-015 — Search robustness and tool-call economy (findings from the persona re-run)
+
+**Context:** After the persona change, the evaluation dropped to 16/19. The traces showed: (1) a regression introduced by ADR-012 — `unavailable_matches` was returned even when available products were found, so a budget search mentioned a discontinued and an out-of-stock guitar the customer never asked about; (2) a search for "Shelby SN-7C violão 7 cordas" found nothing because the all-terms match compared `violao` with the category `violoes` (singular vs plural), and the agent then called `get_product` for each alternative, which already carried prices, until it hit the 6-step limit and returned the fallback; (3) a correct reply ("o prazo vai até 24/02", on 20/02) failed an overly strict regex.
+
+**Decision:** Instrument-type words and connectors are ignored in product queries (the category filter covers them); `unavailable_matches` is only returned when no available product matched; the `get_product` description states that alternatives already include prices; the step limit rose from 6 to 8 for legitimate multi-tool turns; the regex accepts "prazo ... vai até".
+
+**Why:** Each fix targets the cause seen in the trace, and each bug became a unit test. The regression in (1) is a reminder that fixes need the full evaluation suite re-run, not only the scenario that motivated them.

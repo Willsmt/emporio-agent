@@ -7,6 +7,14 @@ from emporio.tools.pricing import apply_discount, payment_summary, to_money
 MAX_RESULTS = 15
 MAX_ALTERNATIVES = 3
 
+# Words that do not identify a product: connectors and instrument types (the category filter covers those).
+# Without this, "violão" (violao) never matches the category "Violões" (violoes) in an all-terms search.
+IGNORED_TERMS = {
+    "de", "da", "do", "com", "para", "o", "a", "e", "um", "uma",
+    "violao", "violoes", "guitarra", "guitarras", "baixo", "baixos", "ukulele", "ukuleles",
+    "teclado", "teclados", "piano", "pianos", "bateria", "baterias", "instrumento", "instrumentos",
+}
+
 PRODUCT_QUERY = """
     SELECT p.product_id, p.name, p.name_search, p.price_brl, p.stock_quantity, p.status,
            p.description, p.specs, c.name AS category,
@@ -53,7 +61,7 @@ def search_products(
     if max_price is not None and max_price <= 0:
         max_price = None  # some models send 0 meaning "no limit" for optional numeric filters
     rows = conn.execute(PRODUCT_QUERY + " ORDER BY p.price_brl").fetchall()
-    terms = normalize(query).split() if query else []
+    terms = [t for t in normalize(query).split() if t not in IGNORED_TERMS] if query else []
     category_key = normalize(category) if category else None
 
     results = []
@@ -80,7 +88,7 @@ def search_products(
             f"Showing {MAX_RESULTS} of {len(results)} matches (available first, then by price). "
             "Tell the customer more options exist and offer to narrow the search."
         )
-    if hidden_matches:
+    if hidden_matches and not results:  # only when the customer's product is not among the available ones
         response["unavailable_matches"] = hidden_matches
         response["unavailable_note"] = (
             "These products match the query but cannot be bought now. Tell the customer their status and "

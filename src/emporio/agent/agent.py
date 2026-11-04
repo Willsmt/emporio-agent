@@ -7,7 +7,7 @@ from emporio.agent.types import AgentReply, ModelTurn, ToolCall, ToolSpec
 
 logger = logging.getLogger(__name__)
 
-MAX_STEPS = 6
+MAX_STEPS = 8
 SENSITIVE_ARGUMENTS = {"contact"}
 FALLBACK_REPLY = (
     "Desculpe, não consegui concluir sua solicitação agora. "
