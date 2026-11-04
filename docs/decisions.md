@@ -228,3 +228,32 @@ store time, hidden empty categories, sorted promotions) and for the routes; the 
 
 **Consequences.** One more read-only endpoint, rate limited like the rest. Product pages and deep links stay as
 future work.
+
+## ADR-018 — Pages split into HTML, CSS and JS so a strict CSP needs no 'unsafe-inline'
+
+**Context.** The store page (`/`) and the chat page (`/chat`) kept their styles and scripts inline. A Content Security
+Policy that allows inline code (`'unsafe-inline'`) blocks almost nothing from an injected script, so a CSP was not
+worth adding while the pages stayed that way. Rendering is already safe: the store page uses `textContent` only,
+and the chat escapes model output before allowing `**bold**` and line breaks. The CSP is a second layer
+(defense in depth) in case a future change gets that wrong.
+
+**Decision.** Each page is split into `static/<page>.html`, `static/css/<name>.css` and `static/js/<name>.js`
+(`store` and `chat`), loaded as same-origin files, with no inline `<style>`, `<script>`, `style=""` or `on*=`
+attributes. The JS is moved verbatim: same rendering, same `postMessage` origin checks, same ready/ask handshake
+and same `embed` class. A small HTTP middleware in `web/app.py` sets
+`Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;
+connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'`,
+`X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` on `/`, `/chat` and
+`/static/*` only. `/api/docs` and `/api/openapi.json` (served only in `DEMO_MODE`) are left out: FastAPI's Swagger UI
+loads its script and CSS from a CDN and boots with an inline script, so a global policy would break it. JSON API
+responses carry no document to protect.
+
+**Evidence.** `tests/test_web.py` checks that both pages and their static files send the CSP without
+`'unsafe-inline'`, that the HTML has no inline scripts, styles or handlers, that the moved JS and CSS are served, and
+that `/api/docs` still returns 200 in `DEMO_MODE` without the page CSP. The Docker smoke test checks the CSP header
+on `/` and fetches the JS and CSS files.
+
+**Consequences.** Any future inline style or script on these pages is silently blocked by the browser; new code goes in
+the CSS/JS files. Styles set from JS through `element.style` are not affected by `style-src`. `frame-ancestors 'self'`
+also stops other sites from framing the pages (clickjacking). `pyproject.toml` package data now lists
+`web/static/css/*` and `web/static/js/*`.

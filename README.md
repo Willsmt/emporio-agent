@@ -14,7 +14,7 @@ chooses which tool to call and turns the result into a friendly answer.
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Live demo | [Live demo](#live-demo) |
 | Technical decisions, in short                                | [Technical decisions](#technical-decisions)                                                                    |
-| Decision log (17 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
+| Decision log (18 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
 | Data quality findings and assumptions                        | [`docs/data-quality.md`](docs/data-quality.md)                                                                 |
 | Behavioral evaluation report (19/19)                         | [`evals/report.md`](evals/report.md)                                                                           |
 | Example conversations (5)                                    | [`conversations/`](conversations/)                                                                             |
@@ -53,7 +53,7 @@ Requires Python 3.11+ (CI runs 3.11, 3.12 and 3.13) and an API key for Gemini or
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl        # builds data/processed/emporio.db from data/raw + data/curated
-pytest -q                         # 136 offline tests, no API calls
+pytest -q                         # 143 offline tests, no API calls
 cp .env.example .env              # set LLM_PROVIDER and LLM_API_KEY
 ```
 
@@ -120,7 +120,8 @@ open/closed status and next opening day are computed in Python in the store's ti
 not left to the model.
 
 **Web.** FastAPI with in-memory sessions, per-IP sliding-window rate limit, a daily message cap, input size limit,
-and transcripts with e-mails and phones masked before storage. The page is plain HTML with an XSS-safe renderer.
+and transcripts with e-mails and phones masked before storage. The pages are plain HTML with separate CSS and JS files (no inline code), an XSS-safe renderer and a strict
+Content Security Policy plus `nosniff` and `Referrer-Policy` headers on `/`, `/chat` and `/static/*` (ADR-018).
 
 ## Technical decisions
 
@@ -171,11 +172,11 @@ providers are supported.
 
 | Job                          | Checks                                                                                                               |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `tests (3.11 / 3.12 / 3.13)` | 136 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
+| `tests (3.11 / 3.12 / 3.13)` | 143 offline tests; coverage must stay at 80% or more (currently ~85%); a leaked SQLite connection fails the suite    |
 | `security (bandit + pip-audit)`                | Bandit (static analysis) and pip-audit (known vulnerabilities in dependencies)                                       |
 | `secrets (gitleaks)`                    | gitleaks over the full git history                                                                                   |
 | `complexity (no block ranked D or worse)`                 | No function ranked D or worse in cyclomatic complexity                                                               |
-| `integration (docker image smoke test)`                | Builds the Docker image, starts it and checks the UI, the API, closed docs outside `DEMO_MODE` and the non-root user |
+| `integration (docker image smoke test)`                | Builds the Docker image, starts it and checks the UI (including the CSP header), the API, closed docs outside `DEMO_MODE` and the non-root user |
 
 Real LLM calls are deliberately **not** in CI: they cost money, depend on quotas and are non-deterministic, and a
 gate that fails because a provider returned 503 teaches people to ignore CI. They run through the evaluation

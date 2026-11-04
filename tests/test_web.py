@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 import pytest
@@ -67,8 +68,37 @@ def test_production_mode_hides_internals(conn, tmp_path):
 def test_store_page_and_chat_page_are_served(client):
     store, chat = client.get("/"), client.get("/chat")
     assert store.status_code == chat.status_code == 200
-    assert 'id="fab"' in store.text and "/api/storefront" in store.text
-    assert 'id="log"' in chat.text and "postMessage" in chat.text
+    assert 'id="fab"' in store.text and '<script src="/static/js/store.js">' in store.text
+    assert 'id="log"' in chat.text and '<script src="/static/js/chat.js">' in chat.text
+    store_js, chat_js = client.get("/static/js/store.js"), client.get("/static/js/chat.js")
+    assert store_js.status_code == chat_js.status_code == 200
+    assert "/api/storefront" in store_js.text and "postMessage" in chat_js.text
+    for css in ("/static/css/store.css", "/static/css/chat.css"):
+        assert client.get(css).status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/", "/chat"])
+def test_pages_have_no_inline_scripts_styles_or_handlers(client, path):
+    html = client.get(path).text
+    assert "<style" not in html and "<script>" not in html and "style=" not in html
+    assert not re.search(r"\son[a-z]+\s*=", html)
+
+
+@pytest.mark.parametrize("path", ["/", "/chat", "/static/js/store.js", "/static/css/chat.css"])
+def test_pages_and_static_files_send_strict_csp(client, path):
+    headers = client.get(path).headers
+    csp = headers["content-security-policy"]
+    assert "script-src 'self'" in csp and "style-src 'self'" in csp and "frame-ancestors 'self'" in csp
+    assert "unsafe-inline" not in csp and "unsafe-eval" not in csp
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["referrer-policy"] == "strict-origin-when-cross-origin"
+
+
+def test_api_docs_still_work_in_demo_mode_without_page_csp(client):
+    for path in ("/api/docs", "/api/openapi.json"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "content-security-policy" not in response.headers
 
 
 def test_storefront_endpoint_returns_injected_data(conn, tmp_path):

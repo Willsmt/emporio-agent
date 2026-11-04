@@ -5,63 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Empório da Música — Instrumentos musicais em Campo Grande</title>
 <link rel="icon" href="/static/mel_icon.svg" type="image/svg+xml">
-<style>
-  :root {
-    --ink: #1d1a17; --paper: #f6f1e9; --card: #fffdf9; --wood: #8a4b20; --wood-dark: #5e3214;
-    --brass: #c8962e; --honey: #f2a81d; --muted: #7a7065; --line: #e6dccd; --plum: #5b3a8c;
-    --ok: #2f7a3a; --closed: #a3361f;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; color: var(--ink); background: var(--paper); }
-  a { color: inherit; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
-  .demo-note { display: none; background: #fff4d6; color: #6b4a00; border-bottom: 1px solid #ecd9a4; font-size: 13px; text-align: center; padding: 7px 16px; }
-  header { background: var(--wood-dark); color: #fff; border-bottom: 4px solid var(--brass); }
-  header .wrap { display: flex; align-items: center; gap: 14px; padding-top: 12px; padding-bottom: 12px; }
-  header img { width: 42px; height: 42px; }
-  header .brand { font-weight: 700; font-size: 19px; letter-spacing: .3px; }
-  header nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
-  header nav a { text-decoration: none; opacity: .85; } header nav a:hover { opacity: 1; text-decoration: underline; }
-  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #fff; }
-  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .status.open { color: var(--ok); } .status.closed { color: var(--closed); }
-  .hero { padding: 48px 0 36px; }
-  .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center; }
-  .hero h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; margin: 10px 0 14px; color: var(--wood-dark); }
-  .hero p { font-size: 17px; color: #4a4038; margin: 0 0 22px; max-width: 36ch; }
-  .hero img { width: 100%; max-width: 420px; justify-self: center; }
-  .btn { display: inline-block; border: 0; border-radius: 12px; padding: 12px 20px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
-  .btn.primary { background: var(--wood); color: #fff; } .btn.primary:hover { background: var(--wood-dark); }
-  .btn.ghost { background: transparent; color: var(--wood-dark); border: 1.5px solid var(--wood); margin-left: 8px; }
-  section { padding: 28px 0; }
-  h2 { font-size: 24px; color: var(--wood-dark); margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 18px; font-size: 14.5px; }
-  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
-  .card h3 { margin: 0; font-size: 17px; }
-  .card .meta { color: var(--muted); font-size: 14px; }
-  .card .ask { margin-top: auto; align-self: flex-start; background: none; border: 0; padding: 6px 0 0; color: var(--plum); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .card .ask:hover { text-decoration: underline; }
-  .promo .tag { align-self: flex-start; background: var(--honey); color: var(--wood-dark); font-weight: 700; font-size: 13px; border-radius: 8px; padding: 2px 8px; }
-  .promo .from { color: var(--muted); text-decoration: line-through; font-size: 14px; }
-  .promo .price { font-size: 22px; font-weight: 700; color: var(--wood-dark); }
-  .visit .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .visit table { border-collapse: collapse; width: 100%; font-size: 15px; }
-  .visit td { padding: 6px 0; border-bottom: 1px solid var(--line); } .visit td:last-child { text-align: right; font-weight: 600; }
-  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 26px 20px 90px; }
-  .fab { position: fixed; right: 22px; bottom: 22px; width: 64px; height: 64px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); z-index: 20; }
-  .fab img { width: 100%; height: 100%; display: block; }
-  .fab-hint { position: fixed; right: 96px; bottom: 36px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; font-size: 14px; box-shadow: 0 3px 10px rgba(0,0,0,.08); z-index: 20; }
-  .panel { position: fixed; right: 22px; bottom: 98px; width: min(420px, calc(100vw - 24px)); height: min(640px, calc(100vh - 130px)); background: var(--paper); border-radius: 18px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.25); z-index: 20; display: flex; flex-direction: column; }
-  .panel[hidden] { display: none; }
-  .panel iframe { flex: 1; border: 0; width: 100%; }
-  .panel .close { position: absolute; top: 10px; right: 10px; z-index: 1; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.35); color: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
-  @media (max-width: 760px) {
-    header nav { display: none; } .hero .wrap, .visit .wrap { grid-template-columns: 1fr; } .hero img { max-width: 300px; }
-    .btn.ghost { margin: 10px 0 0; } .fab-hint { display: none; }
-    .panel { right: 12px; bottom: 92px; height: calc(100vh - 120px); }
-  }
-</style>
+<link rel="stylesheet" href="/static/css/store.css">
 </head>
 <body>
 <div class="demo-note" id="demo-note">Protótipo do desafio técnico · loja fictícia · o chat roda em modo demonstração e mostra as consultas internas da Mel</div>
@@ -131,78 +75,6 @@
   <button class="close" id="close" type="button" aria-label="Fechar o chat">×</button>
 </div>
 
-<script>
-// Data is inserted with textContent only: nothing from the API ever becomes HTML.
-const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-
-const panel = document.getElementById("panel");
-const fab = document.getElementById("fab");
-let frame = null, ready = false, pending = [];
-
-function openChat(ask) {
-  panel.hidden = false;
-  fab.setAttribute("aria-expanded", "true");
-  document.getElementById("fab-hint").hidden = true;
-  if (!frame) {
-    frame = el("iframe");
-    frame.src = "/chat?embed=1";
-    frame.title = "Chat com a Mel";
-    panel.appendChild(frame);
-  }
-  if (ask) ready ? frame.contentWindow.postMessage({ ask }, location.origin) : pending.push(ask);
-}
-function closeChat() { panel.hidden = true; fab.setAttribute("aria-expanded", "false"); }
-
-// The chat page signals when its session is ready; questions clicked before that are queued.
-window.addEventListener("message", (e) => {
-  if (e.origin !== location.origin || !e.data || e.data.ready !== true) return;
-  ready = true;
-  for (const ask of pending.splice(0)) frame.contentWindow.postMessage({ ask }, location.origin);
-});
-fab.onclick = () => (panel.hidden ? openChat() : closeChat());
-document.getElementById("close").onclick = closeChat;
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closeChat(); });
-document.addEventListener("click", (e) => {
-  const b = e.target.closest("[data-ask]");
-  if (b) openChat(b.dataset.ask);
-});
-
-function askButton(text, ask) { const b = el("button", "ask", text); b.type = "button"; b.dataset.ask = ask; return b; }
-
-function render(data) {
-  const s = data.store;
-  const status = document.getElementById("status");
-  status.textContent = s.status.label;
-  status.className = "status " + (s.status.open_now ? "open" : "closed");
-  status.hidden = false;
-  document.getElementById("address").textContent = s.address || "";
-  document.getElementById("phone").textContent = s.phone ? "Telefone e WhatsApp: " + s.phone : "";
-  const hours = document.getElementById("hours");
-  for (const h of s.hours) { const tr = el("tr"); tr.append(el("td", null, h.days), el("td", null, h.time)); hours.append(tr); }
-  document.getElementById("hours-note").textContent = s.hours_note;
-
-  const cats = document.getElementById("categories");
-  for (const c of data.categories) {
-    const card = el("div", "card");
-    card.append(el("h3", null, c.name), el("div", "meta", `${c.available} ${c.available === 1 ? "disponível" : "disponíveis"}`),
-      askButton("Perguntar à Mel →", `Quais ${c.name.toLowerCase()} vocês têm disponíveis?`));
-    cats.append(card);
-  }
-  const promos = document.getElementById("promotions");
-  for (const p of data.promotions) {
-    const card = el("div", "card promo");
-    card.append(el("span", "tag", `-${Math.round(p.percent)}%`), el("h3", null, p.name), el("div", "meta", `${p.category} · ${p.label}`),
-      el("div", "from", brl(p.list_price)), el("div", "price", brl(p.price)),
-      askButton("Parcelas e PIX com a Mel →", `Quais as condições de pagamento do ${p.name}?`));
-    promos.append(card);
-  }
-  if (!data.promotions.length) promos.append(el("p", "sub", "Nenhuma promoção ativa no momento."));
-}
-
-fetch("/api/storefront").then((r) => (r.ok ? r.json() : Promise.reject(r.status))).then(render)
-  .catch(() => document.getElementById("categories").append(el("p", "sub", "Não foi possível carregar o catálogo agora.")));
-fetch("/health").then((r) => r.json()).then((h) => { if (h.demo_mode) document.getElementById("demo-note").style.display = "block"; }).catch(() => {});
-</script>
+<script src="/static/js/store.js"></script>
 </body>
 </html>

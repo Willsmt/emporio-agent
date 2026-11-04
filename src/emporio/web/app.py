@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,19 @@ MAX_MESSAGES_PER_SESSION = 30
 REQUESTS_PER_MINUTE_PER_CLIENT = 20
 MAX_MESSAGES_PER_DAY = 500  # global spend cap across all clients
 
+# Strict CSP for the store and chat pages (ADR-018): every script and style is a same-origin file, so no
+# 'unsafe-inline'. Only "/", "/chat" and "/static/*" get it; Swagger UI at /api/docs (DEMO_MODE) loads a CDN
+# script and inline code, so a global policy would break it.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+    "frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'"
+)
+SECURITY_HEADERS = {
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+}
+
 
 class ChatRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=64)
@@ -35,6 +48,15 @@ class ChatResponse(BaseModel):
     reply: str
     tool_trace: list[dict] | None = None  # only in demo mode
     messages_left: int
+
+
+async def add_security_headers(request: Request, call_next: Callable) -> Response:
+    """HTTP middleware: security headers on the web pages and their static files only."""
+    response = await call_next(request)
+    path = request.url.path
+    if path in ("/", "/chat") or path.startswith("/static/"):
+        response.headers.update(SECURITY_HEADERS)
+    return response
 
 
 def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = None,
@@ -113,5 +135,6 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
     def chat_page() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
+    app.middleware("http")(add_security_headers)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app

@@ -16,7 +16,7 @@ every business rule (prices, installments, availability, return deadlines, ident
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl          # build data/processed/emporio.db from data/raw + data/curated
-pytest -q                           # offline test suite (no API calls), 136 tests
+pytest -q                           # offline test suite (no API calls), 143 tests
 pytest -q --cov=emporio --cov-report=term-missing:skip-covered   # as CI runs it; coverage must be >= 80%
 python -m emporio.chat --trace      # terminal chat; needs .env (see .env.example)
 python -m emporio.web               # web UI + API on http://127.0.0.1:8000 (HOST/PORT honored); needs .env
@@ -38,7 +38,7 @@ connection fails the suite. CI (`.github/workflows/ci.yml`, on push to `main` an
 | `security (bandit + pip-audit)` | Python 3.13: `bandit -r src -q` and `pip-audit --skip-editable` (pip and setuptools are upgraded first, otherwise pip-audit flags the runner's old installers) |
 | `secrets (gitleaks)` | `gitleaks-action@v2` over the full git history (`fetch-depth: 0`) |
 | `complexity (no block ranked D or worse)` | Python 3.13: `check_complexity.sh` gate |
-| `integration (docker image smoke test)` | Job id `docker-smoke`, runs after `tests`: builds the image, starts it with a dummy key and checks `/health`, the UI at `/`, `POST /api/sessions`, `/api/docs` returning 404 outside `DEMO_MODE`, and that the container user is uid 10001 (non-root) |
+| `integration (docker image smoke test)` | Job id `docker-smoke`, runs after `tests`: builds the image, starts it with a dummy key and checks `/health`, the UI at `/` (references `js/store.js`, which calls `/api/storefront`), `css/chat.css`, the `Content-Security-Policy` header on `/`, `POST /api/sessions`, `/api/docs` returning 404 outside `DEMO_MODE`, and that the container user is uid 10001 (non-root) |
 
 ## Environment variables
 Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_dotenv`) unless noted. Template: `.env.example`.
@@ -83,11 +83,13 @@ Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_doten
 | `src/emporio/evaluation/scenarios.py` | The 19 scenarios and the recorded conversations |
 | `src/emporio/evaluation/checks.py` | `Checks` / `evaluate`: tool-trace and regex checks |
 | `src/emporio/evaluation/runner.py`, `__main__.py` | Runs scenarios against the real LLM, writes `evals/report.md` or `conversations/*.md` |
-| `src/emporio/web/app.py` | FastAPI app: `/health`, `POST /api/sessions`, `POST /api/chat`, static page; `create_app` |
+| `src/emporio/web/app.py` | FastAPI app: `/health`, `POST /api/sessions`, `POST /api/chat`, `GET /api/storefront`, store page `/`, chat page `/chat`, `/static`; `create_app`; `add_security_headers` middleware sets CSP, `X-Content-Type-Options` and `Referrer-Policy` on `/`, `/chat` and `/static/*` only (ADR-018) |
 | `src/emporio/web/sessions.py` | In-memory `SessionStore` (30 min TTL, max 500 sessions) |
 | `src/emporio/web/rate_limit.py` | `SlidingWindowLimiter` (20 req/min per client IP; global cap of 500 messages/day) |
 | `src/emporio/web/transcripts.py` | Text transcripts in `data/processed/transcripts.db` with e-mails and phones masked (`mask_contacts`) |
-| `src/emporio/web/static/index.html` | Chat page (no framework) |
+| `src/emporio/web/static/store.html`, `css/store.css`, `js/store.js` | Store front page served at `/` (no framework) |
+| `src/emporio/web/static/index.html`, `css/chat.css`, `js/chat.js` | Chat page served at `/chat` and embedded as the widget (no framework). No inline `<style>`, `<script>`, `style=` or `on*=` allowed: the CSP blocks them (ADR-018) |
+| `src/emporio/web/static/mel_hero.svg`, `mel_icon.svg` | Mel mascot images |
 | `src/emporio/web/__main__.py` | Starts uvicorn with proxy headers |
 | `tests/` | Offline suite; `tests/fakes.py` has `ScriptedProvider`, a fake LLM for the loop |
 | `evals/report.md`, `conversations/` | Generated evaluation report and recorded conversations (outputs of `python -m emporio.evaluation`) |

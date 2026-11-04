@@ -52,7 +52,7 @@ Uvicorn logs requests at request-line level only, so customer message bodies are
 ## LLM-specific review (code only)
 
 - **Internals exposure.** `DEMO_MODE` gates `/api/docs`, `/api/openapi.json`, `tool_trace` in chat responses, and model/provider details in `/health`. It defaults to off. `/health` always reports the `demo_mode` flag itself, which is minor. `.env.example` suggests `DEMO_MODE=true` for reviewers; it must never be enabled on a public deployment.
-- **XSS.** The static page escapes model output before assigning `innerHTML` and re-allows only `**bold**` and `<br>`. Customer text and the tool trace are rendered with `textContent`. No issue found.
+- **XSS.** The static page escapes model output before assigning `innerHTML` and re-allows only `**bold**` and `<br>`. Customer text and the tool trace are rendered with `textContent`. No issue found. Later hardening (ADR-018): the pages no longer use inline scripts or styles, and a strict CSP is sent on `/`, `/chat` and `/static/*` (not on `/api/docs`, which needs a CDN script and inline code in `DEMO_MODE`).
 - **Cost abuse.** Current limits: 1000 characters per message, 30 messages per session, 20 requests per minute per client IP, at most 500 sessions with a 30-minute TTL, and 6 agent steps per turn (raised to 8 later, see ADR-015). Gaps are listed under residual risks R1, R4 and R5.
 - **Prompt injection.** The model sees customer text and tool results, but every tool is read-only, takes typed arguments, and enforces identity checks in Python. A successful injection can only reach what verified tools already return. The prompt itself was not tested; that requires the dynamic step.
 
