@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
+  tests:
+    name: tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -22,26 +23,63 @@ jobs:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-
       - name: Install
         run: |
-          # The 3.11 runner image ships an old setuptools that pip-audit flags; upgrade the installers too.
           python -m pip install --upgrade pip setuptools
           pip install -e ".[dev]"
-
       - name: Tests and coverage (offline, no API keys)
         run: pytest -q --cov=emporio --cov-report=term-missing:skip-covered
 
-      - name: Static security analysis (Bandit)
+  security:
+    name: security (bandit + pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install
+        run: |
+          # Old installers in the runner image get flagged by pip-audit; upgrade them first.
+          python -m pip install --upgrade pip setuptools
+          pip install -e ".[dev]"
+      - name: Static analysis (Bandit)
         run: bandit -r src -q
-
       - name: Dependency vulnerabilities (pip-audit)
         run: pip-audit --skip-editable
 
-      - name: Complexity gate (no block ranked D or worse)
+  secrets:
+    name: secrets (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Scan the full history for leaked credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  complexity:
+    name: complexity (no block ranked D or worse)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Complexity gate
         run: bash .claude/skills/cyclomatic-complexity/scripts/check_complexity.sh
