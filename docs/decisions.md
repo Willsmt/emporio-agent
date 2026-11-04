@@ -93,3 +93,21 @@ happens in code and writes to `data/processed/` (git-ignored, regenerable).
 - **"Today" is a parameter**, making date logic deterministic in tests and allowing a simulated date (A9).
 
 **Trade-offs:** Product search filters 65 rows in Python; a larger catalog would use SQLite FTS5. Return windows rely on the estimated delivery date (A8).
+
+## ADR-007 — LLM providers behind an adapter, history kept in native format
+
+**Context:** The reviewer may have a Gemini or an OpenAI key, and the agent loop should not depend on any SDK.
+
+**Decision:** An `LLMProvider` protocol with two adapters (`GeminiProvider` on google-genai, `OpenAIProvider` on the Responses API), selected by `LLM_PROVIDER`. Gemini is the default because Google AI Studio has a free tier. Defaults: `gemini-3.8-flash` and `gpt-6-luna`, overridable with `LLM_MODEL`.
+
+**Why:** Dependency inversion: the loop depends on an abstraction, so switching providers is configuration. Each adapter keeps the conversation in its **native** format and the loop appends it untouched, because Gemini 3+ requires *thought signatures* to be sent back unchanged during multi-step function calling (otherwise HTTP 400), and OpenAI reasoning models need their reasoning items back. The OpenAI adapter uses `store=False` (conversations are not stored by the provider) and passes reasoning back encrypted.
+
+**Trade-offs:** Native histories cannot be moved between providers mid-conversation. Two SDKs are installed even if only one is used.
+
+## ADR-008 — Agent loop safeguards and offline testing
+
+**Decision:** A provider-agnostic loop (model → tool calls → results → model) with: max 6 steps per message; unknown tools, invalid arguments and tool exceptions returned to the model as error data; history rollback when the provider fails mid-turn; integer arguments coerced per tool schema (Gemini may send `95.0`); contact data redacted (`***`) in logs and traces; current time computed in the store's timezone (`America/Campo_Grande`, one hour behind São Paulo) and injected into the system prompt, including whether the store is open.
+
+**Why:** The loop is where an agent fails in production: infinite tool loops, crashes on a malformed call, corrupted history after a timeout, personal data in logs. Each safeguard has a test using a scripted fake provider, so the loop is verified offline, deterministically and at no API cost.
+
+**Trade-offs:** The fake provider proves the loop, not the model's judgment; model behavior is evaluated separately with real calls.

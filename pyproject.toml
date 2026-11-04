@@ -9,6 +9,9 @@ description = "Customer service agent prototype for Empório da Música"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",
+    "python-dotenv>=1.0",
+    "google-genai>=2.0",
+    "openai>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -17,5 +20,9 @@ dev = ["pytest>=8", "pypdf>=5"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+emporio = ["data/schema.sql"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["llm: calls a real LLM provider (requires LLM_API_KEY); skipped otherwise"]
