@@ -20,9 +20,11 @@ function openChat(ask) {
 }
 function closeChat() { panel.hidden = true; fab.setAttribute("aria-expanded", "false"); }
 
-// The chat page signals when its session is ready; questions clicked before that are queued.
+// The chat iframe signals when its session is ready; questions clicked before that are queued.
+// Only messages from our own iframe count (frame is null until the widget is first opened).
 window.addEventListener("message", (e) => {
-  if (e.origin !== location.origin || !e.data || e.data.ready !== true) return;
+  if (e.origin !== location.origin || !frame || e.source !== frame.contentWindow) return;
+  if (!e.data || e.data.ready !== true) return;
   ready = true;
   for (const ask of pending.splice(0)) frame.contentWindow.postMessage({ ask }, location.origin);
 });

@@ -29,13 +29,16 @@ MAX_MESSAGES_PER_DAY = 500  # global spend cap across all clients
 # 'unsafe-inline'. Only "/", "/chat" and "/static/*" get it; Swagger UI at /api/docs (DEMO_MODE) loads a CDN
 # script and inline code, so a global policy would break it.
 CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; "
     "frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'"
 )
-SECURITY_HEADERS = {
+# Page headers: only on "/", "/chat" and "/static/*". HSTS is not set here: *.run.app sits under the .app TLD,
+# which is on the browsers' HSTS preload list, so HTTPS is already forced.
+PAGE_SECURITY_HEADERS = {
     "Content-Security-Policy": CONTENT_SECURITY_POLICY,
-    "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
 }
 
 
@@ -51,21 +54,42 @@ class ChatResponse(BaseModel):
 
 
 async def add_security_headers(request: Request, call_next: Callable) -> Response:
-    """HTTP middleware: security headers on the web pages and their static files only."""
+    """HTTP middleware: nosniff on every response; CSP and the other page headers on the pages and static files."""
     response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
     path = request.url.path
     if path in ("/", "/chat") or path.startswith("/static/"):
-        response.headers.update(SECURITY_HEADERS)
+        response.headers.update(PAGE_SECURITY_HEADERS)
     return response
+
+
+def client_ip(request: Request, trusted_proxy_hops: int) -> str:
+    """Client address used as the rate-limit key.
+
+    With 0 hops it is the socket peer. With N trusted proxies in front, each one appends the address it received
+    the request from to X-Forwarded-For, so the N-th entry from the right was written by the outermost trusted
+    proxy and cannot be forged by the client (anything further left can). Cloud Run appends the real client IP
+    as the last entry, hence TRUSTED_PROXY_HOPS=1 there. Too few entries means the request did not come through
+    the expected proxies: fall back to the socket peer.
+    """
+    peer = request.client.host if request.client else "unknown"
+    if trusted_proxy_hops <= 0:
+        return peer
+    header = request.headers.get("x-forwarded-for", "")
+    entries = [entry.strip() for entry in header.split(",") if entry.strip()]
+    if len(entries) < trusted_proxy_hops:
+        return peer
+    return entries[-trusted_proxy_hops]
 
 
 def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = None,
                sessions: SessionStore | None = None, limiter: SlidingWindowLimiter | None = None,
                demo_mode: bool = False, daily_limiter: SlidingWindowLimiter | None = None,
-               storefront: Callable[[], dict] | None = None) -> FastAPI:
+               storefront: Callable[[], dict] | None = None, trusted_proxy_hops: int = 0) -> FastAPI:
     """In demo mode the API also exposes the model, the tool trace and the Swagger docs, for technical review.
 
     Off by default: in production those are internal details (stack fingerprinting, tool map for prompt injection).
+    trusted_proxy_hops: number of reverse proxies in front of the app (see client_ip); 0 when exposed directly.
     """
     app = FastAPI(title="Empório da Música — customer service agent",
                   docs_url="/api/docs" if demo_mode else None, redoc_url=None, openapi_url="/api/openapi.json" if demo_mode else None)
@@ -78,8 +102,7 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
         logger.warning("DEMO_MODE is on: model, tool trace and API docs are exposed. Do not use in production.")
 
     def check_rate_limit(request: Request) -> None:
-        client = request.client.host if request.client else "unknown"
-        if not limiter.allow(client):
+        if not limiter.allow(client_ip(request, trusted_proxy_hops)):
             raise HTTPException(status_code=429, detail="Muitas mensagens em pouco tempo. Aguarde um minuto.")
 
     @app.get("/health")

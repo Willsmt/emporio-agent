@@ -60,3 +60,17 @@ def load_settings() -> Settings:
         min_interval_seconds=min_interval,
         demo_mode=os.getenv("DEMO_MODE", "").strip().lower() in {"1", "true", "yes"},
     )
+
+
+def parse_trusted_proxy_hops(raw: str | None) -> int:
+    """TRUSTED_PROXY_HOPS: number of reverse proxies in front of the web app (0 = none, the default)."""
+    value = (raw or "").strip()
+    if not value:
+        return 0
+    try:
+        hops = int(value)
+    except ValueError:
+        hops = -1
+    if hops < 0:
+        raise SettingsError(f"TRUSTED_PROXY_HOPS must be an integer >= 0, got '{value}'")
+    return hops

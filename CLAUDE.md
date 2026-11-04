@@ -16,7 +16,7 @@ every business rule (prices, installments, availability, return deadlines, ident
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl          # build data/processed/emporio.db from data/raw + data/curated
-pytest -q                           # offline test suite (no API calls), 143 tests
+pytest -q                           # offline test suite (no API calls), 162 tests
 pytest -q --cov=emporio --cov-report=term-missing:skip-covered   # as CI runs it; coverage must be >= 80%
 python -m emporio.chat --trace      # terminal chat; needs .env (see .env.example)
 python -m emporio.web               # web UI + API on http://127.0.0.1:8000 (HOST/PORT honored); needs .env
@@ -38,7 +38,7 @@ connection fails the suite. CI (`.github/workflows/ci.yml`, on push to `main` an
 | `security (bandit + pip-audit)` | Python 3.13: `bandit -r src -q` and `pip-audit --skip-editable` (pip and setuptools are upgraded first, otherwise pip-audit flags the runner's old installers) |
 | `secrets (gitleaks)` | `gitleaks-action@v2` over the full git history (`fetch-depth: 0`) |
 | `complexity (no block ranked D or worse)` | Python 3.13: `check_complexity.sh` gate |
-| `integration (docker image smoke test)` | Job id `docker-smoke`, runs after `tests`: builds the image, starts it with a dummy key and checks `/health`, the UI at `/` (references `js/store.js`, which calls `/api/storefront`), `css/chat.css`, the `Content-Security-Policy` header on `/`, `POST /api/sessions`, `/api/docs` returning 404 outside `DEMO_MODE`, and that the container user is uid 10001 (non-root) |
+| `integration (docker image smoke test)` | Job id `docker-smoke`, runs after `tests`: builds the image, starts it with a dummy key and checks `/health` (and its `nosniff` header), the UI at `/` (references `js/store.js`, which calls `/api/storefront`), `css/chat.css`, the `Content-Security-Policy` header on `/`, `POST /api/sessions`, `/api/docs` returning 404 outside `DEMO_MODE`, and that the container user is uid 10001 (non-root) |
 
 ## Environment variables
 Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_dotenv`) unless noted. Template: `.env.example`.
@@ -53,7 +53,7 @@ Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_doten
 | `DEMO_MODE` | off | `1`/`true`/`yes` exposes model, tool trace and `/api/docs` in the web app. Never enable in production |
 | `HOST` | `127.0.0.1` (`0.0.0.0` in the Dockerfile) | Web bind address (`web/__main__.py`) |
 | `PORT` | `8000` | Web port (`web/__main__.py`) |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Trusted proxy addresses (or `*`) so the rate limit sees the real client IP (`web/__main__.py`) |
+| `TRUSTED_PROXY_HOPS` | `0` | Integer >= 0: reverse proxies in front of the app. `0` = rate limit keys on the socket peer; `N` = on the N-th `X-Forwarded-For` entry from the right (`1` on Cloud Run). Invalid value is a configuration error at startup (`parse_trusted_proxy_hops` in `settings.py`, read in `web/__main__.py`; uvicorn runs with `proxy_headers=False`; ADR-019) |
 
 ## Architecture map
 | Path | Responsibility |
@@ -61,7 +61,7 @@ Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_doten
 | `data/raw/` | Files provided by the store. **Never modify.** |
 | `data/curated/store_policies.md` | Policy manual converted from the PDF, with "Esclarecimento" notes resolving contradictions |
 | `src/emporio/config.py` | Project paths (`RAW_DIR`, `CURATED_DIR`, `DB_PATH`, `POLICIES_PATH`) |
-| `src/emporio/settings.py` | `Settings` dataclass, `load_settings`, store timezone (`America/Campo_Grande`), default models |
+| `src/emporio/settings.py` | `Settings` dataclass, `load_settings`, `parse_trusted_proxy_hops`, store timezone (`America/Campo_Grande`), default models |
 | `src/emporio/text.py` | `normalize` (lowercase, no accents) and `digits_only` helpers |
 | `src/emporio/data/etl.py` | Clean CSVs, validate, build SQLite in a temp file and atomically replace (connection closed before the replace) |
 | `src/emporio/data/policies.py`, `schema.sql` | Policy section parsing; DB schema and constraints |
@@ -83,14 +83,14 @@ Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_doten
 | `src/emporio/evaluation/scenarios.py` | The 19 scenarios and the recorded conversations |
 | `src/emporio/evaluation/checks.py` | `Checks` / `evaluate`: tool-trace and regex checks |
 | `src/emporio/evaluation/runner.py`, `__main__.py` | Runs scenarios against the real LLM, writes `evals/report.md` or `conversations/*.md` |
-| `src/emporio/web/app.py` | FastAPI app: `/health`, `POST /api/sessions`, `POST /api/chat`, `GET /api/storefront`, store page `/`, chat page `/chat`, `/static`; `create_app`; `add_security_headers` middleware sets CSP, `X-Content-Type-Options` and `Referrer-Policy` on `/`, `/chat` and `/static/*` only (ADR-018) |
+| `src/emporio/web/app.py` | FastAPI app: `/health`, `POST /api/sessions`, `POST /api/chat`, `GET /api/storefront`, store page `/`, chat page `/chat`, `/static`; `create_app`; `client_ip` (rate-limit key from `trusted_proxy_hops`, ADR-019); `add_security_headers` middleware sets `X-Content-Type-Options: nosniff` on every response and CSP, `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Opener-Policy` on `/`, `/chat` and `/static/*` only (ADR-018) |
 | `src/emporio/web/sessions.py` | In-memory `SessionStore` (30 min TTL, max 500 sessions) |
 | `src/emporio/web/rate_limit.py` | `SlidingWindowLimiter` (20 req/min per client IP; global cap of 500 messages/day) |
 | `src/emporio/web/transcripts.py` | Text transcripts in `data/processed/transcripts.db` with e-mails and phones masked (`mask_contacts`) |
 | `src/emporio/web/static/store.html`, `css/store.css`, `js/store.js` | Store front page served at `/` (no framework) |
 | `src/emporio/web/static/index.html`, `css/chat.css`, `js/chat.js` | Chat page served at `/chat` and embedded as the widget (no framework). No inline `<style>`, `<script>`, `style=` or `on*=` allowed: the CSP blocks them (ADR-018) |
 | `src/emporio/web/static/mel_hero.svg`, `mel_icon.svg` | Mel mascot images |
-| `src/emporio/web/__main__.py` | Starts uvicorn with proxy headers |
+| `src/emporio/web/__main__.py` | Starts uvicorn with `proxy_headers=False`; reads `TRUSTED_PROXY_HOPS` via `parse_trusted_proxy_hops` and passes it to `create_app` |
 | `tests/` | Offline suite; `tests/fakes.py` has `ScriptedProvider`, a fake LLM for the loop |
 | `evals/report.md`, `conversations/` | Generated evaluation report and recorded conversations (outputs of `python -m emporio.evaluation`) |
 | `Dockerfile` | Image for the web app; builds the DB at build time, runs as non-root (uid 10001) |

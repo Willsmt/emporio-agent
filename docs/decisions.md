@@ -257,3 +257,37 @@ on `/` and fetches the JS and CSS files.
 the CSS/JS files. Styles set from JS through `element.style` are not affected by `style-src`. `frame-ancestors 'self'`
 also stops other sites from framing the pages (clickjacking). `pyproject.toml` package data now lists
 `web/static/css/*` and `web/static/js/*`.
+
+## ADR-019 — Client IP from a fixed number of trusted proxy hops; extra security headers
+
+**Context.** The rate limit (20 requests/min per client) keys on the client IP. Behind Cloud Run the socket peer is
+Google's front end, so the deploy used uvicorn's `proxy_headers` with `FORWARDED_ALLOW_IPS=*`. With `*`, uvicorn
+takes the **leftmost** `X-Forwarded-For` entry, which the client writes itself: sending a new fake IP per request
+bypassed the per-IP limit (security report addendum, S1). Cloud Run's proxy addresses are not a fixed range, so
+trusting "the proxy address" is not workable either.
+
+**Decision.** A `TRUSTED_PROXY_HOPS` setting (integer >= 0, default `0`; invalid values stop startup) says how many
+reverse proxies sit in front of the app. `web.app.client_ip` uses the socket peer when it is `0`; with `N` it splits
+`X-Forwarded-For` on commas, drops empty entries and takes the N-th entry from the right, which was appended by the
+outermost trusted proxy and cannot be forged. With fewer than `N` entries it falls back to the socket peer. Cloud
+Run appends the real client IP as the last entry, so the deploy uses `TRUSTED_PROXY_HOPS=1`. uvicorn runs with
+`proxy_headers=False`, so the app is the only place that interprets the header.
+
+In the same change: `X-Content-Type-Options: nosniff` on every response (including `/api/*` and `/health`);
+`Permissions-Policy: camera=(), microphone=(), geolocation=()` and `Cross-Origin-Opener-Policy: same-origin` on
+`/`, `/chat` and `/static/*`; `data:` removed from the CSP `img-src` (all images are served files); `postMessage`
+handlers also check `e.source` (the parent window in the chat, the widget iframe in the store page). HSTS is not set
+by the app: `*.run.app` is under the `.app` TLD, which is on the browsers' HSTS preload list, so HTTPS is already
+enforced; a deployment on another domain should set HSTS at its TLS terminator.
+
+**Evidence.** `tests/test_web.py`: `client_ip` with 0 hops, spoofed leading entries, missing/empty header, fewer
+entries than hops and whitespace; an app test where three requests with a changing first entry and the same last
+entry get 201, 201, 429 while a different last entry gets 201; `nosniff` on API responses; page headers and no
+`data:` in the CSP. `tests/test_settings.py`: valid and invalid `TRUSTED_PROXY_HOPS`. A headless Chrome check of `/`
+and `/chat` showed zero CSP violations, the store-to-widget question flow still working, and forged same-origin
+messages from the wrong source ignored.
+
+**Consequences.** A deployment with a different proxy chain must set the hop count to match it. Too low and every
+client shares the inner proxy's address as its key (over-limiting); too high and the key comes from a client-written
+entry again (spoofable). If the app is reachable directly, bypassing the proxy, a client can forge the header, so the
+proxy must be the only way in (true on Cloud Run). Local runs need nothing (`0`).

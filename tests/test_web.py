@@ -9,7 +9,7 @@ from emporio.agent.providers.base import ProviderError
 from emporio.agent.tool_registry import build_tools
 from emporio.agent.types import ModelTurn
 from emporio.web import app as web_app
-from emporio.web.app import MAX_MESSAGES_PER_SESSION, create_app
+from emporio.web.app import MAX_MESSAGES_PER_SESSION, client_ip, create_app
 from emporio.web.rate_limit import SlidingWindowLimiter
 from emporio.web.sessions import SessionStore
 from emporio.web.transcripts import TranscriptStore, mask_contacts
@@ -90,8 +90,20 @@ def test_pages_and_static_files_send_strict_csp(client, path):
     csp = headers["content-security-policy"]
     assert "script-src 'self'" in csp and "style-src 'self'" in csp and "frame-ancestors 'self'" in csp
     assert "unsafe-inline" not in csp and "unsafe-eval" not in csp
+    assert "data:" not in csp
     assert headers["x-content-type-options"] == "nosniff"
     assert headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
+    assert headers["cross-origin-opener-policy"] == "same-origin"
+
+
+def test_every_response_is_nosniff_but_only_pages_get_page_headers(client):
+    responses = [client.get("/health"), client.post("/api/sessions"), client.get("/api/storefront"),
+                 client.post("/api/chat", json={"session_id": "nope", "message": "oi"})]
+    for response in responses:
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert "content-security-policy" not in response.headers
+        assert "permissions-policy" not in response.headers
 
 
 def test_api_docs_still_work_in_demo_mode_without_page_csp(client):
@@ -169,6 +181,46 @@ def test_rate_limit_per_client(conn, tmp_path):
     assert client.post("/api/sessions").status_code == 201
     assert client.post("/api/sessions").status_code == 201
     assert client.post("/api/sessions").status_code == 429
+
+
+class FakeRequest:
+    """Just what client_ip reads: the socket peer and the headers."""
+
+    def __init__(self, xff=None, peer="10.0.0.1"):
+        self.client = type("Peer", (), {"host": peer})() if peer else None
+        self.headers = {"x-forwarded-for": xff} if xff is not None else {}
+
+
+@pytest.mark.parametrize("xff, hops, expected", [
+    ("1.1.1.1", 0, "10.0.0.1"),                          # no trusted proxy: the header is ignored
+    ("6.6.6.6, 7.7.7.7, 203.0.113.9", 1, "203.0.113.9"), # spoofed leading entries; the proxy appended the last
+    (None, 1, "10.0.0.1"),                               # header missing: socket peer
+    ("", 1, "10.0.0.1"),                                 # header empty
+    ("203.0.113.9", 2, "10.0.0.1"),                      # fewer entries than hops: socket peer
+    ("6.6.6.6, 203.0.113.9, 35.0.0.1", 2, "203.0.113.9"),
+    ("  6.6.6.6 ,, 203.0.113.9  ", 1, "203.0.113.9"),    # whitespace and empty entries
+])
+def test_client_ip(xff, hops, expected):
+    assert client_ip(FakeRequest(xff), hops) == expected
+
+
+def test_client_ip_without_socket_peer():
+    assert client_ip(FakeRequest(None, peer=None), 0) == "unknown"
+
+
+def test_rate_limit_keys_on_last_forwarded_entry_behind_one_proxy(conn, tmp_path):
+    agent = Agent(ReplyingProvider(), build_tools(conn, today=lambda: date(2026, 11, 3)), system_prompt=lambda: "p")
+    app = create_app(agent, TranscriptStore(tmp_path / "t.db"), limiter=SlidingWindowLimiter(2, 60),
+                     trusted_proxy_hops=1)
+    client = TestClient(app)
+
+    def post(xff):
+        return client.post("/api/sessions", headers={"X-Forwarded-For": xff}).status_code
+
+    assert post("1.1.1.1, 203.0.113.9") == 201
+    assert post("2.2.2.2, 203.0.113.9") == 201
+    assert post("3.3.3.3, 203.0.113.9") == 429   # changing the forged first entry does not help
+    assert post("3.3.3.3, 198.51.100.7") == 201  # a different real client has its own budget
 
 
 @pytest.mark.parametrize("text, expected", [

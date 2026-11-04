@@ -1,6 +1,6 @@
 import pytest
 
-from emporio.settings import SettingsError, load_settings
+from emporio.settings import SettingsError, load_settings, parse_trusted_proxy_hops
 
 
 @pytest.fixture(autouse=True)
@@ -50,3 +50,14 @@ def test_demo_mode_is_off_unless_enabled(monkeypatch, value, expected):
     monkeypatch.setenv("LLM_API_KEY", "k")
     monkeypatch.setenv("DEMO_MODE", value)
     assert load_settings().demo_mode is expected
+
+
+@pytest.mark.parametrize("raw, expected", [(None, 0), ("", 0), (" 0 ", 0), ("1", 1), ("2", 2)])
+def test_trusted_proxy_hops(raw, expected):
+    assert parse_trusted_proxy_hops(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["-1", "one", "1.5", "*"])
+def test_invalid_trusted_proxy_hops_is_a_configuration_error(raw):
+    with pytest.raises(SettingsError, match="TRUSTED_PROXY_HOPS"):
+        parse_trusted_proxy_hops(raw)

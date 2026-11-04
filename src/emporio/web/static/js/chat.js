@@ -98,9 +98,11 @@ async function submit(text) {
   }
 }
 
-// Embedded in the store page: accept questions only from the same origin (the "Perguntar à Mel" buttons).
+// Embedded in the store page: accept questions only from the parent store page on the same origin
+// (the "Perguntar à Mel" buttons).
 window.addEventListener("message", (e) => {
-  if (e.origin !== location.origin || !e.data || typeof e.data.ask !== "string") return;
+  if (e.origin !== location.origin || e.source !== window.parent || window.parent === window) return;
+  if (!e.data || typeof e.data.ask !== "string") return;
   submit(e.data.ask.slice(0, 1000));
 });
 form.addEventListener("submit", (e) => { e.preventDefault(); submit(input.value); });
