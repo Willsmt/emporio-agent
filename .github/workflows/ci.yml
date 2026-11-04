@@ -29,7 +29,9 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
       - name: Tests and coverage (LLM tests skip without LLM_API_KEY)
         run: pytest -q --cov=emporio --cov-report=term-missing:skip-covered
