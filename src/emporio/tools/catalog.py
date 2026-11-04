@@ -50,6 +50,8 @@ def search_products(
     max_price: float | None = None,
     available_only: bool = False,
 ) -> dict:
+    if max_price is not None and max_price <= 0:
+        max_price = None  # some models send 0 meaning "no limit" for optional numeric filters
     rows = conn.execute(PRODUCT_QUERY + " ORDER BY p.price_brl").fetchall()
     terms = normalize(query).split() if query else []
     category_key = normalize(category) if category else None
@@ -75,6 +77,9 @@ def search_products(
             f"Showing {MAX_RESULTS} of {len(results)} matches (available first, then by price). "
             "Tell the customer more options exist and offer to narrow the search."
         )
+    if not results:
+        applied = {k: v for k, v in {"query": query, "category": category, "max_price": max_price}.items() if v}
+        response["hint"] = f"No products matched {applied}. Retry with fewer words in the query or without filters."
     if category_key and not any(normalize(c) == category_key for c in list_categories(conn)):
         response["error"] = "Unknown category"
         response["valid_categories"] = list_categories(conn)

@@ -66,3 +66,15 @@ def test_available_product_includes_payment_options(conn):
 
 def test_unknown_product(conn):
     assert "error" in get_product(conn, 9999)
+
+
+def test_zero_max_price_means_no_limit(conn):
+    # Some models fill every optional parameter and send max_price=0 for "no limit"
+    result = search_products(conn, query="takamine gd20", category="Violões", max_price=0, available_only=False)
+    assert [p["product_id"] for p in result["products"]] == [95]
+
+
+def test_empty_result_explains_the_filters(conn):
+    result = search_products(conn, query="stradivarius", max_price=500)
+    assert result["count"] == 0
+    assert "stradivarius" in result["hint"] and "500" in result["hint"]

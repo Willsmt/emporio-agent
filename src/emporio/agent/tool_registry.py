@@ -25,14 +25,14 @@ def build_tools(conn: sqlite3.Connection, today: Callable[[], date]) -> list[Too
             description=(
                 "Search the store catalog. Use for questions about which instruments exist, prices, "
                 "availability or options within a budget. Returns final prices (with active promotions) "
-                "and availability. All filters are optional."
+                "and availability. All filters are optional: omit the ones the customer did not mention."
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Brand, model or words from the product name, e.g. 'takamine gd20'."},
                     "category": {"type": "string", "enum": categories, "description": "Product category."},
-                    "max_price": {"type": "number", "description": "Maximum final price in BRL."},
+                    "max_price": {"type": "number", "minimum": 1, "description": "Maximum final price in BRL. Omit for no limit."},
                     "available_only": {"type": "boolean", "description": "Only products available for purchase now."},
                 },
             },

@@ -135,3 +135,11 @@ During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILA
 **Why:** Pacing is a cross-cutting concern; a decorator adds it without touching the adapters or the agent loop (open/closed principle), and a fake clock tests it without waiting. Mixing infrastructure errors with behavior failures would make the evaluation misleading.
 
 **Trade-offs:** Pacing makes free-tier runs slow (~10 minutes for all scenarios). It is a fixed interval, not adaptive to the provider's `retryDelay`.
+
+## ADR-011 — Defensive tool inputs (finding from the first OpenAI evaluation run)
+
+**Context:** In the first evaluation run with `gpt-6-luna`, the agent called `search_products(query="Takamine GD20", max_price=0, ...)`: the model filled every optional parameter and used `0` to mean "no limit". The tool filtered every product out and the agent told the customer the product did not exist. Gemini only sent the parameters it used, so this was a provider-specific behavior that unit tests could not reveal.
+
+**Decision:** Defense in layers: the schema declares `minimum: 1` and says "omit for no limit"; the tool treats a non-positive `max_price` as no limit; an empty result returns a `hint` listing the applied filters so the model can retry with fewer constraints.
+
+**Why:** A tool cannot assume the model respects its schema. The model-facing contract (schema + description) reduces the chance of a bad call; the tool's own validation makes a bad call harmless; the hint lets the model recover on its own.
