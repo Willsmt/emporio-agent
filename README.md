@@ -12,6 +12,7 @@ chooses which tool to call and turns the result into a friendly answer.
 
 | What                                                         | Where                                                                                                          |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Live demo | [Live demo](#live-demo) |
 | Technical decisions, in short                                | [Technical decisions](#technical-decisions)                                                                    |
 | Decision log (15 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
 | Data quality findings and assumptions                        | [`docs/data-quality.md`](docs/data-quality.md)                                                                 |
@@ -19,6 +20,28 @@ chooses which tool to call and turns the result into a friendly answer.
 | Example conversations (5)                                    | [`conversations/`](conversations/)                                                                             |
 | Security audit and complexity report                         | [`docs/security-report.md`](docs/security-report.md), [`docs/complexity-report.md`](docs/complexity-report.md) |
 | Map of the code for AI agents and humans                     | [`CLAUDE.md`](CLAUDE.md)                                                                                       |
+
+## Live demo
+
+**https://emporio-agent-580393723122.southamerica-east1.run.app**
+
+Hosted on Google Cloud Run with OpenAI `gpt-6-luna` and `DEMO_MODE=true`, so each answer shows the model and the
+tools it called. Try a price ("Quanto custa o Takamine GD20?"), a policy ("Posso devolver um produto?"), an order
+status (you will be asked for the e-mail or phone on file) and something off-topic.
+
+- The first request after a quiet period can take a few seconds while the container starts.
+- It runs as a single instance (sessions live in memory) with the same limits as locally, plus a hard spend limit
+  on the API key. If a limit is reached, the chat says the assistant is unavailable.
+- It is hosted for the evaluation period and may be taken down afterwards; everything also runs locally (below).
+
+Deployed from this repository's Dockerfile, with the API key in Secret Manager:
+
+```bash
+gcloud run deploy emporio-agent --source . --region southamerica-east1 --allow-unauthenticated \
+  --max-instances 1 --memory 1Gi --timeout 120 \
+  --set-env-vars "LLM_PROVIDER=openai,DEMO_MODE=true,FORWARDED_ALLOW_IPS=*" \
+  --set-secrets "LLM_API_KEY=openai-api-key:latest"
+```
 
 ## Quickstart
 
@@ -174,6 +197,9 @@ command above, and the report is committed as evidence.
 ## With more time
 
 - Move sessions and rate limits to Redis and add a lockout per order number on the identity check.
+- Provider fallback (OpenAI to Gemini) for new sessions, as a decorator like `RateLimitedProvider`. Switching in the
+  middle of a conversation is harder: each provider keeps its history in its native format (Gemini thought
+  signatures, OpenAI encrypted reasoning), so the context would have to be translated or dropped.
 - Add an LLM-as-a-judge layer to the evaluation for tone and policy faithfulness, plus paraphrased versions of each
   scenario to measure robustness.
 - Observability: trace each conversation (tool calls, latency, tokens and cost per answer) with OpenTelemetry or Langfuse.
