@@ -159,3 +159,16 @@ With `minimum: 1` in the schema, `gpt-6-luna` still filled the parameter, now wi
 ### ADR-012 correction
 
 On re-check, the "back tomorrow, Saturday" reply was **correct**. The recording ran at 00:17 in São Paulo, which is 23:17 in the store's timezone (`America/Campo_Grande`, UTC-4): on the simulated Friday, the next opening was indeed Saturday 09:00. The reviewer mixed the two timezones. The change is kept as hardening (the model no longer infers relative days), but it fixed no observed bug: three of the four findings were real. The mistake reinforces the decision itself: date reasoning belongs in code.
+
+## ADR-013 — Web interface: FastAPI API, static page and in-memory sessions
+
+**Context:** The terminal chat serves one user. A web interface (and a possible public deployment) serves many concurrent users and is reachable by anyone.
+
+**Options considered:**
+- **FastAPI + a static HTML/JS page** — explicit REST API, full-stack, container-friendly.
+- **Streamlit** — faster to build, but hides the API and the front end.
+- **CLI only** — no risk, nothing to demo online.
+
+**Decision:** FastAPI with `POST /api/sessions`, `POST /api/chat`, `GET /health` and one static page without a framework. One stateless `Agent` instance is shared; each session holds its own provider-native history in memory (30 min TTL, at most 500 sessions, one turn at a time per session). Text transcripts go to a separate writable SQLite database with e-mails and phones masked; the store database stays read-only (shared across threads with `check_same_thread=False`, safe because it is read-only and `sqlite3.threadsafety == 3`). Cost and abuse limits: 20 requests/min per client, 30 messages per conversation, 1000 characters per message. Errors map to HTTP semantics (404 expired session, 422 invalid input, 429 limits, 503 provider failure, which does not count against the session limit). The page escapes model output before rendering and only re-enables bold and line breaks (no XSS). A Dockerfile builds the database at image build time and runs as a non-root user; the API key is only provided as a platform secret.
+
+**Trade-offs:** Native histories are not persisted, so a restart starts conversations over; sessions and rate limits live in one process (a multi-instance deployment would need Redis or similar). Behind a reverse proxy the rate limit sees the proxy address unless forwarded headers are trusted.

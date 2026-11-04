@@ -12,16 +12,18 @@ dependencies = [
     "python-dotenv>=1.0",
     "google-genai>=2.0",
     "openai>=3.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pypdf>=5"]
+dev = ["pytest>=8", "pypdf>=5", "httpx>=0.27"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-emporio = ["data/schema.sql"]
+emporio = ["data/schema.sql", "web/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
