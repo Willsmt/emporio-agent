@@ -31,13 +31,19 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
-    tool_trace: list[dict]
+    tool_trace: list[dict] | None = None  # only in demo mode
     messages_left: int
 
 
 def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = None,
-               sessions: SessionStore | None = None, limiter: SlidingWindowLimiter | None = None) -> FastAPI:
-    app = FastAPI(title="Empório da Música — customer service agent", docs_url="/api/docs", redoc_url=None)
+               sessions: SessionStore | None = None, limiter: SlidingWindowLimiter | None = None,
+               demo_mode: bool = False) -> FastAPI:
+    """In demo mode the API also exposes the model, the tool trace and the Swagger docs, for technical review.
+
+    Off by default: in production those are internal details (stack fingerprinting, tool map for prompt injection).
+    """
+    app = FastAPI(title="Empório da Música — customer service agent",
+                  docs_url="/api/docs" if demo_mode else None, redoc_url=None, openapi_url="/api/openapi.json" if demo_mode else None)
     sessions = sessions or SessionStore()
     limiter = limiter or SlidingWindowLimiter(REQUESTS_PER_MINUTE_PER_CLIENT, 60)
     info = info or {}
@@ -49,7 +55,7 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
 
     @app.get("/health")
     def health() -> dict:
-        return {"status": "ok", **info}
+        return {"status": "ok", "demo_mode": demo_mode, **(info if demo_mode else {})}
 
     @app.post("/api/sessions", status_code=201)
     def create_session(request: Request) -> dict:
@@ -79,7 +85,8 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
 
         transcripts.append(session.id, "customer", text)
         transcripts.append(session.id, "assistant", reply.text)
-        return ChatResponse(reply=reply.text, tool_trace=reply.tool_trace, messages_left=messages_left)
+        return ChatResponse(reply=reply.text, tool_trace=reply.tool_trace if demo_mode else None,
+                            messages_left=messages_left)
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:

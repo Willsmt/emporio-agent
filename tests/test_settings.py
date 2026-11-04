@@ -6,7 +6,7 @@ from emporio.settings import SettingsError, load_settings
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
     monkeypatch.setattr("emporio.settings.load_dotenv", lambda: None)  # ignore the developer's .env
-    for var in ("LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY", "STORE_TODAY", "LLM_MIN_INTERVAL_SECONDS"):
+    for var in ("LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY", "STORE_TODAY", "LLM_MIN_INTERVAL_SECONDS", "DEMO_MODE"):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -43,3 +43,10 @@ def test_rate_limit_setting(monkeypatch):
     settings = load_settings()
     assert settings.min_interval_seconds == 13.0
     assert isinstance(create_provider(settings), RateLimitedProvider)
+
+
+@pytest.mark.parametrize("value, expected", [("", False), ("false", False), ("true", True), ("1", True)])
+def test_demo_mode_is_off_unless_enabled(monkeypatch, value, expected):
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("DEMO_MODE", value)
+    assert load_settings().demo_mode is expected

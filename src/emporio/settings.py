@@ -21,6 +21,7 @@ class Settings:
     api_key: str
     store_today: date | None = None
     min_interval_seconds: float = 0.0
+    demo_mode: bool = False
 
     def now(self) -> datetime:
         current = datetime.now(STORE_TIMEZONE)
@@ -57,4 +58,5 @@ def load_settings() -> Settings:
         api_key=api_key,
         store_today=store_today,
         min_interval_seconds=min_interval,
+        demo_mode=os.getenv("DEMO_MODE", "").strip().lower() in {"1", "true", "yes"},
     )

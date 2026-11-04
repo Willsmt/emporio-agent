@@ -30,23 +30,38 @@ class ReplyingProvider(ScriptedProvider):
         return ModelTurn(text="O Takamine GD20 custa **R$ 2.199,00**.", tool_calls=[])
 
 
-@pytest.fixture
-def client(conn, tmp_path):
+def make_client(conn, tmp_path, demo_mode=True):
     agent = Agent(ReplyingProvider(), build_tools(conn, today=lambda: date(2026, 11, 3)), system_prompt=lambda: "p")
     transcripts = TranscriptStore(tmp_path / "transcripts.db")
     app = create_app(agent, transcripts, info={"provider": "fake", "model": "scripted"},
-                     limiter=SlidingWindowLimiter(1000, 60))
+                     limiter=SlidingWindowLimiter(1000, 60), demo_mode=demo_mode)
     test_client = TestClient(app)
     test_client.transcripts = transcripts
     return test_client
+
+
+@pytest.fixture
+def client(conn, tmp_path):
+    return make_client(conn, tmp_path, demo_mode=True)
 
 
 def new_session(client):
     return client.post("/api/sessions").json()["session_id"]
 
 
-def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "provider": "fake", "model": "scripted"}
+def test_health_in_demo_mode_shows_model(client):
+    assert client.get("/health").json() == {"status": "ok", "demo_mode": True, "provider": "fake", "model": "scripted"}
+    assert client.get("/api/docs").status_code == 200
+
+
+def test_production_mode_hides_internals(conn, tmp_path):
+    client = make_client(conn, tmp_path, demo_mode=False)
+    assert client.get("/health").json() == {"status": "ok", "demo_mode": False}
+    assert client.get("/api/docs").status_code == 404
+    session_id = new_session(client)
+    body = client.post("/api/chat", json={"session_id": session_id, "message": "Quanto custa?"}).json()
+    assert body["reply"].startswith("O Takamine")
+    assert body["tool_trace"] is None
 
 
 def test_index_page_is_served(client):

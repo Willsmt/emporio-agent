@@ -70,6 +70,11 @@
   }
   form button:disabled { opacity: .5; cursor: default; }
   .footnote { text-align: center; font-size: 11.5px; color: var(--muted); padding-bottom: 10px; }
+  .demo-banner {
+    display: none; background: #fff4d6; color: #6b4a00; border-bottom: 1px solid #ecd9a4;
+    font-size: 12.5px; padding: 8px 20px; text-align: center;
+  }
+  .demo-banner strong { color: #5a3d00; }
 </style>
 </head>
 <body>
@@ -77,11 +82,15 @@
   <div class="logo" aria-hidden="true">♪</div>
   <div>
     <h1>Empório da Música</h1>
-    <p>Mel, assistente virtual · <span id="model">conectando…</span></p>
+    <p>Mel, assistente virtual<span id="model"></span></p>
   </div>
   <div class="spacer"></div>
   <button id="reset" type="button">Nova conversa</button>
 </header>
+<div class="demo-banner" id="demo-banner" role="note">
+  <strong>Modo demonstração</strong> · exibe o modelo e as consultas internas (tools) de cada resposta, para avaliação técnica.
+  Em produção (<code>DEMO_MODE=false</code>) fica desligado e o cliente vê apenas a conversa.
+</div>
 
 <main>
   <div id="log" aria-live="polite"></div>
@@ -122,7 +131,7 @@ function addMessage(role, text, trace) {
       const details = document.createElement("details");
       details.className = "trace";
       const summary = document.createElement("summary");
-      summary.textContent = `consultou ${trace.length} ${trace.length === 1 ? "ferramenta" : "ferramentas"}`;
+      summary.textContent = `🔧 consultas internas: ${trace.length} ${trace.length === 1 ? "tool" : "tools"} (modo demonstração)`;
       details.appendChild(summary);
       for (const step of trace) {
         const code = document.createElement("code");
@@ -200,8 +209,11 @@ input.addEventListener("keydown", (e) => {
 document.getElementById("reset").onclick = () => startSession().catch((e) => addMessage("error", e.message));
 
 fetch("/health").then((r) => r.json()).then((h) => {
-  document.getElementById("model").textContent = h.model ? `${h.provider}/${h.model}` : "online";
-}).catch(() => { document.getElementById("model").textContent = "offline"; });
+  if (h.demo_mode) {
+    document.getElementById("demo-banner").style.display = "block";
+    if (h.model) document.getElementById("model").textContent = ` · ${h.provider}/${h.model}`;
+  }
+}).catch(() => {});
 startSession().catch((e) => addMessage("error", e.message));
 </script>
 </body>
