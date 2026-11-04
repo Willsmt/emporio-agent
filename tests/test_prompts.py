@@ -28,3 +28,8 @@ def test_next_opening_skips_sunday():
 def test_closed_status_tells_when_team_returns():
     status = store_open_status(datetime(2026, 11, 3, 22, 37))
     assert "quarta-feira, 04/11 at 09:00" in status
+
+
+def test_prompt_requires_payment_conditions_for_a_specific_product():
+    prompt = build_system_prompt(datetime(2026, 11, 3, 10, 30))
+    assert "call get_product" in prompt and "PIX price" in prompt

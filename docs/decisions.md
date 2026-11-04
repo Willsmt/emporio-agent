@@ -143,3 +143,7 @@ During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILA
 **Decision:** Defense in layers: the schema declares `minimum: 1` and says "omit for no limit"; the tool treats a non-positive `max_price` as no limit; an empty result returns a `hint` listing the applied filters so the model can retry with fewer constraints.
 
 **Why:** A tool cannot assume the model respects its schema. The model-facing contract (schema + description) reduces the chance of a bad call; the tool's own validation makes a bad call harmless; the hint lets the model recover on its own.
+
+### ADR-011 amendment — evidence from the second run
+
+With `minimum: 1` in the schema, `gpt-6-luna` still filled the parameter, now with `max_price=1`, wasting a call before the empty-result hint made it retry. The model fills every optional parameter with the smallest "neutral" value the schema allows, so the `minimum` was removed: a `0` is handled by the tool and costs no extra call. The same run showed the agent answering a price question from the search result alone, without payment conditions (policy 7.2, step 4); the system prompt now requires `get_product` for questions about a specific product.
