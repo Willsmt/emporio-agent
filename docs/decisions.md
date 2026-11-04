@@ -106,7 +106,7 @@ happens in code and writes to `data/processed/` (git-ignored, regenerable).
 
 ## ADR-008 — Agent loop safeguards and offline testing
 
-**Decision:** A provider-agnostic loop (model → tool calls → results → model) with: max 6 steps per message; unknown tools, invalid arguments and tool exceptions returned to the model as error data; history rollback when the provider fails mid-turn; integer arguments coerced per tool schema (Gemini may send `95.0`); contact data redacted (`***`) in logs and traces; current time computed in the store's timezone (`America/Campo_Grande`, one hour behind São Paulo) and injected into the system prompt, including whether the store is open.
+**Decision:** A provider-agnostic loop (model → tool calls → results → model) with: max 6 steps per message (8 since ADR-015); unknown tools, invalid arguments and tool exceptions returned to the model as error data; history rollback when the provider fails mid-turn; integer arguments coerced per tool schema (Gemini may send `95.0`); contact data redacted (`***`) in logs and traces; current time computed in the store's timezone (`America/Campo_Grande`, one hour behind São Paulo) and injected into the system prompt, including whether the store is open.
 
 **Why:** The loop is where an agent fails in production: infinite tool loops, crashes on a malformed call, corrupted history after a timeout, personal data in logs. Each safeguard has a test using a scripted fake provider, so the loop is verified offline, deterministically and at no API cost.
 
@@ -120,7 +120,7 @@ During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILA
 
 **Context:** Unit tests prove the code; they cannot prove the model uses it well. LLM output is non-deterministic: in two manual runs the agent announced the closed store once and skipped it once.
 
-**Decision:** `python -m emporio.evaluation` runs 17 scenarios derived from the challenge and the policy manual against the real model. Each scenario checks which tools were called (from the agent's trace) and regexes that must or must not appear in the final reply (accent- and case-insensitive). Results go to `evals/report.md`. The same runner records the example conversations (`--conversations`) from real executions, including the tool trace. The check logic and the runner are unit-tested offline with the fake provider.
+**Decision:** `python -m emporio.evaluation` runs 17 scenarios (19 as of ADR-015) derived from the challenge and the policy manual against the real model. Each scenario checks which tools were called (from the agent's trace) and regexes that must or must not appear in the final reply (accent- and case-insensitive). Results go to `evals/report.md`. The same runner records the example conversations (`--conversations`) from real executions, including the tool trace. The check logic and the runner are unit-tested offline with the fake provider.
 
 **Why:** Behavior regressions (inventing a discount, leaking an order, computing installments in the model) are the failures that matter in a customer-facing agent, and they only show up when the real model runs. Recording the example conversations from the same harness keeps them reproducible.
 
