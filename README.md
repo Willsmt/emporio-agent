@@ -147,10 +147,10 @@ providers are supported.
 | Job                          | Checks                                                                                                               |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `tests (3.11 / 3.12 / 3.13)` | 128 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
-| `security`                   | Bandit (static analysis) and pip-audit (known vulnerabilities in dependencies)                                       |
-| `secrets`                    | gitleaks over the full git history                                                                                   |
-| `complexity`                 | No function ranked D or worse in cyclomatic complexity                                                               |
-| `integration`                | Builds the Docker image, starts it and checks the UI, the API, closed docs outside `DEMO_MODE` and the non-root user |
+| `security (bandit + pip-audit)`                | Bandit (static analysis) and pip-audit (known vulnerabilities in dependencies)                                       |
+| `secrets (gitleaks)`                    | gitleaks over the full git history                                                                                   |
+| `complexity (no block ranked D or worse)`                 | No function ranked D or worse in cyclomatic complexity                                                               |
+| `integration (docker image smoke test)`                | Builds the Docker image, starts it and checks the UI, the API, closed docs outside `DEMO_MODE` and the non-root user |
 
 Real LLM calls are deliberately **not** in CI: they cost money, depend on quotas and are non-deterministic, and a
 gate that fails because a provider returned 503 teaches people to ignore CI. They run through the evaluation

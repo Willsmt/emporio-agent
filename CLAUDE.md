@@ -29,8 +29,16 @@ bash .claude/skills/cyclomatic-complexity/scripts/check_complexity.sh   # comple
 docker build -t emporio . && docker run -p 8000:8000 --env-file .env emporio   # Dockerfile builds the DB at image build time
 ```
 `pyproject.toml` makes `ResourceWarning` and unraisable-exception warnings **errors** in pytest, so a leaked SQLite
-connection fails the suite. CI (`.github/workflows/ci.yml`, Python 3.11 and 3.13, on push to `main` and on PRs) runs
-pytest with coverage, Bandit, pip-audit and the complexity gate.
+connection fails the suite. CI (`.github/workflows/ci.yml`, on push to `main` and on PRs; actions `checkout@v5` and
+`setup-python@v6`) runs these jobs:
+
+| Job name in ci.yml | What it gates |
+|---|---|
+| `tests (<python-version>)` | Matrix Python 3.11, 3.12, 3.13: `pytest` with coverage (`fail_under = 80` in `pyproject.toml`) |
+| `security (bandit + pip-audit)` | Python 3.13: `bandit -r src -q` and `pip-audit --skip-editable` (pip and setuptools are upgraded first, otherwise pip-audit flags the runner's old installers) |
+| `secrets (gitleaks)` | `gitleaks-action@v2` over the full git history (`fetch-depth: 0`) |
+| `complexity (no block ranked D or worse)` | Python 3.13: `check_complexity.sh` gate |
+| `integration (docker image smoke test)` | Job id `docker-smoke`, runs after `tests`: builds the image, starts it with a dummy key and checks `/health`, the UI at `/`, `POST /api/sessions`, `/api/docs` returning 404 outside `DEMO_MODE`, and that the container user is uid 10001 (non-root) |
 
 ## Environment variables
 Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_dotenv`) unless noted. Template: `.env.example`.
@@ -83,7 +91,7 @@ Read by `src/emporio/settings.py` (`load_settings`, which also calls `load_doten
 | `src/emporio/web/__main__.py` | Starts uvicorn with proxy headers |
 | `tests/` | Offline suite; `tests/fakes.py` has `ScriptedProvider`, a fake LLM for the loop |
 | `evals/report.md`, `conversations/` | Generated evaluation report and recorded conversations (outputs of `python -m emporio.evaluation`) |
-| `Dockerfile` | Image for the web app; builds the DB at build time, runs as non-root |
+| `Dockerfile` | Image for the web app; builds the DB at build time, runs as non-root (uid 10001) |
 | `.claude/agents/` | `doc-sync` (keeps docs in sync) and `security-auditor` (Bandit, Semgrep, pip-audit; reports only) |
 | `.claude/skills/cyclomatic-complexity/` | Radon-based complexity report and the gate script used by CI |
 
@@ -106,12 +114,12 @@ Regenerate them with the `security-auditor` agent and the `cyclomatic-complexity
 - **New tool:** function in `src/emporio/tools/` → register in `tool_registry.py` → unit tests + an agent-loop test.
 - **New LLM provider:** adapter in `src/emporio/agent/providers/` implementing `LLMProvider` → wire in `create_provider` → adapter tests with SDK types.
 - **Agent behavior / persona:** `src/emporio/agent/prompts.py`; add or update a scenario in `src/emporio/evaluation/scenarios.py` and re-run the full evaluation.
-- **Web limits / sessions:** constants in `src/emporio/web/app.py` and `sessions.py`.
+- **Web limits / sessions:** constants in `src/emporio/web/app.py` (`MAX_MESSAGE_CHARS` 1000, `MAX_MESSAGES_PER_SESSION` 30, `REQUESTS_PER_MINUTE_PER_CLIENT` 20, `MAX_MESSAGES_PER_DAY` 500) and `sessions.py`.
 - **New setting:** `settings.py` + `.env.example` + the table above.
 - **Business rule from the manual:** the matching tool module, never the prompt alone.
 
 ## Conventions
 - Python 3.11+, `src/` layout, code and docs in English; customer-facing replies in Brazilian Portuguese.
-- Every change ships with tests (CI gates: coverage >= 80%, Bandit, pip-audit, no complexity block ranked D or worse); technical decisions get an ADR in `docs/decisions.md`; data assumptions go to `docs/data-quality.md`.
+- Every change ships with tests (CI gates: coverage >= 80%, Bandit, pip-audit, gitleaks, no complexity block ranked D or worse, docker smoke test); technical decisions get an ADR in `docs/decisions.md`; data assumptions go to `docs/data-quality.md`.
 - Conventional Commits (`feat(scope): ...`). No co-author trailers.
 - Secrets only in `.env` (git-ignored). Never print or log API keys.
