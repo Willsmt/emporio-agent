@@ -155,3 +155,7 @@ With `minimum: 1` in the schema, `gpt-6-luna` still filled the parameter, now wi
 **Decision:** Fix in code wherever possible: the relative opening day ("hoje", "amanhã", weekday) is computed in Python and given to the model verbatim; order items include their category; `search_products` reports `unavailable_matches` when the availability filter hides an exact match. The off-topic rule in the prompt was made explicit. Each finding became a regression scenario (`out_of_stock_short_question`, `order_item_category`; `off_topic` already existed).
 
 **Why:** Passing a regex-based evaluation once is not proof of correct behavior: the off-topic scenario had passed in the previous run by chance. Human review of real transcripts complements automated checks. Facts the model would otherwise infer (dates, categories, availability) are handed over explicitly, which removes the opportunity to guess.
+
+### ADR-012 correction
+
+On re-check, the "back tomorrow, Saturday" reply was **correct**. The recording ran at 00:17 in São Paulo, which is 23:17 in the store's timezone (`America/Campo_Grande`, UTC-4): on the simulated Friday, the next opening was indeed Saturday 09:00. The reviewer mixed the two timezones. The change is kept as hardening (the model no longer infers relative days), but it fixed no observed bug: three of the four findings were real. The mistake reinforces the decision itself: date reasoning belongs in code.
