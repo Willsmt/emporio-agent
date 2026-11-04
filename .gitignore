@@ -8,3 +8,7 @@ data/processed/
 .claude/settings.local.json
 .claude/agent-memory/
 graphify-out/
+
+# Build and test artifacts
+.coverage
+*.egg-info/
