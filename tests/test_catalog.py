@@ -78,3 +78,17 @@ def test_empty_result_explains_the_filters(conn):
     result = search_products(conn, query="stradivarius", max_price=500)
     assert result["count"] == 0
     assert "stradivarius" in result["hint"] and "500" in result["hint"]
+
+
+def test_available_only_reports_hidden_exact_matches(conn):
+    # Customer asks for an out-of-stock product; the model filtered by available_only=True
+    result = search_products(conn, query="giannini gf-3d", available_only=True)
+    assert result["count"] == 0
+    assert result["unavailable_matches"] == [
+        {"product_id": 96, "name": "Giannini GF-3D Dreadnought Sunburst", "availability": "out_of_stock"}
+    ]
+    assert "hint" not in result
+
+
+def test_category_browsing_does_not_list_unavailable_products(conn):
+    assert "unavailable_matches" not in search_products(conn, category="Violões", available_only=True)

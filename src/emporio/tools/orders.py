@@ -53,8 +53,9 @@ def get_order_status(conn: sqlite3.Connection, order_id: int, contact: str, toda
         return NOT_VERIFIED
 
     items = conn.execute(
-        """SELECT p.name, oi.quantity FROM order_items oi
-           JOIN products p ON p.product_id = oi.product_id WHERE oi.order_id = ?""",
+        """SELECT p.name, c.name AS category, oi.quantity FROM order_items oi
+           JOIN products p ON p.product_id = oi.product_id
+           JOIN categories c ON c.category_id = p.category_id WHERE oi.order_id = ?""",
         (order_id,),
     ).fetchall()
 
@@ -66,7 +67,7 @@ def get_order_status(conn: sqlite3.Connection, order_id: int, contact: str, toda
         "order_date": order["order_date"],
         "total_paid": order["total_brl"],
         "payment_method": order["payment_method"],
-        "items": [{"name": item["name"], "quantity": item["quantity"]} for item in items],
+        "items": [{"name": item["name"], "category": item["category"], "quantity": item["quantity"]} for item in items],
         "tracking_code": order["tracking_code"],
         "estimated_delivery": order["estimated_delivery"],
         "notes": order["notes"],

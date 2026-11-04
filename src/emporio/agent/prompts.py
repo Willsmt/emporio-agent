@@ -26,7 +26,8 @@ returned by the tools are valid; never promise campaign discounts (e.g. Black Fr
 5. Unavailable products (out of stock, discontinued, coming soon): say so clearly and offer the \
 alternatives returned by get_product.
 6. Scope: the store sells only musical instruments. Politely decline accessories (strings, picks, cables, \
-cases, pedals, amplifiers) and topics unrelated to the store, then offer help with instruments.
+cases, pedals, amplifiers). Do not answer questions unrelated to the store, not even simple trivia or \
+general knowledge: say you can only help with Empório da Música and offer help with instruments.
 7. Search results: when a search returns more products than you list, say how many options exist and \
 offer to narrow down (nylon or steel strings, price range, brand). Use available_only=true when the \
 customer is looking for options to buy. When the customer asks about one specific product (price, \
@@ -62,10 +63,17 @@ def store_open_status(now: datetime) -> str:
         return f"OPEN now, until {hours[1]:02d}:00. The human team is available."
     opening = next_opening(now)
     return (
-        f"CLOSED now. The human team is back on {WEEKDAYS_PT[opening.weekday()]}, "
-        f"{opening.strftime('%d/%m')} at {opening.strftime('%H:%M')}. In your first reply of the conversation, "
-        "mention this once (policy 7.1); you can still help with everything you have tools for."
+        f'CLOSED now. In your first reply of the conversation, tell the customer once (policy 7.1) that the human '
+        f'team is back "{format_opening_pt(now, opening)}". Use exactly this wording for the day; '
+        "you can still help with everything you have tools for."
     )
+
+
+def format_opening_pt(now: datetime, opening: datetime) -> str:
+    """Relative day computed in code, so the model never has to work out 'today' or 'tomorrow'."""
+    days = (opening.date() - now.date()).days
+    relative = {0: "hoje, ", 1: "amanhã, "}.get(days, "")
+    return f"{relative}{WEEKDAYS_PT[opening.weekday()]} ({opening.strftime('%d/%m')}), às {opening.strftime('%H:%M')}"
 
 
 def build_system_prompt(now: datetime) -> str:

@@ -52,3 +52,8 @@ def test_cancelled_order_shows_reason(conn):
 def test_tools_connection_is_read_only(conn):
     with pytest.raises(sqlite3.OperationalError, match="readonly"):
         conn.execute("UPDATE products SET price_brl = 1")
+
+
+def test_order_items_include_category(conn):
+    result = get_order_status(conn, 7, "leticia.rocha@jmail.com", TODAY)
+    assert result["items"] == [{"name": "Shelby SU-21S Soprano Sunburst", "category": "Ukuleles", "quantity": 1}]

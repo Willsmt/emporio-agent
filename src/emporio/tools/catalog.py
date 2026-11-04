@@ -57,6 +57,7 @@ def search_products(
     category_key = normalize(category) if category else None
 
     results = []
+    hidden_matches = []
     for row in rows:
         haystack = f"{row['name_search']} {normalize(row['category'])}"
         if any(term not in haystack for term in terms):
@@ -67,6 +68,8 @@ def search_products(
         if max_price is not None and product["price"] > max_price:
             continue
         if available_only and product["availability"] != "available":
+            if terms:
+                hidden_matches.append({k: product[k] for k in ("product_id", "name", "availability")})
             continue
         results.append(product)
 
@@ -77,7 +80,13 @@ def search_products(
             f"Showing {MAX_RESULTS} of {len(results)} matches (available first, then by price). "
             "Tell the customer more options exist and offer to narrow the search."
         )
-    if not results:
+    if hidden_matches:
+        response["unavailable_matches"] = hidden_matches
+        response["unavailable_note"] = (
+            "These products match the query but cannot be bought now. Tell the customer their status and "
+            "call get_product for similar available alternatives (policy 7.3)."
+        )
+    if not results and not hidden_matches:
         applied = {k: v for k, v in {"query": query, "category": category, "max_price": max_price}.items() if v}
         response["hint"] = f"No products matched {applied}. Retry with fewer words in the query or without filters."
     if category_key and not any(normalize(c) == category_key for c in list_categories(conn)):

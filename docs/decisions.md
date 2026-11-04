@@ -147,3 +147,11 @@ During the first real run, `gemini-3.8-flash` (newest GA) returned `503 UNAVAILA
 ### ADR-011 amendment — evidence from the second run
 
 With `minimum: 1` in the schema, `gpt-6-luna` still filled the parameter, now with `max_price=1`, wasting a call before the empty-result hint made it retry. The model fills every optional parameter with the smallest "neutral" value the schema allows, so the `minimum` was removed: a `0` is handled by the tool and costs no extra call. The same run showed the agent answering a price question from the search result alone, without payment conditions (policy 7.2, step 4); the system prompt now requires `get_product` for questions about a specific product.
+
+## ADR-012 — Findings from reviewing the recorded conversations
+
+**Context:** The evaluation passed 17/17, but a manual review of the five recorded conversations found four errors: the agent answered an off-topic question ("the capital of France is Paris"); on a simulated Friday at 00:17 it said the team was back "tomorrow, Saturday" instead of "today at 09:00"; it called a ukulele in an order a "guitar"; and for an out-of-stock product searched with `available_only=true` it said "not found" instead of "out of stock".
+
+**Decision:** Fix in code wherever possible: the relative opening day ("hoje", "amanhã", weekday) is computed in Python and given to the model verbatim; order items include their category; `search_products` reports `unavailable_matches` when the availability filter hides an exact match. The off-topic rule in the prompt was made explicit. Each finding became a regression scenario (`out_of_stock_short_question`, `order_item_category`; `off_topic` already existed).
+
+**Why:** Passing a regex-based evaluation once is not proof of correct behavior: the off-topic scenario had passed in the previous run by chance. Human review of real transcripts complements automated checks. Facts the model would otherwise infer (dates, categories, availability) are handed over explicitly, which removes the opportunity to guess.

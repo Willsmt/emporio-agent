@@ -27,7 +27,16 @@ def test_next_opening_skips_sunday():
 
 def test_closed_status_tells_when_team_returns():
     status = store_open_status(datetime(2026, 11, 3, 22, 37))
-    assert "quarta-feira, 04/11 at 09:00" in status
+    assert '"amanhã, quarta-feira (04/11), às 09:00"' in status
+
+
+def test_closed_after_midnight_reopens_today():
+    # Friday 00:17: the team is back the same day, not "tomorrow"
+    assert '"hoje, sexta-feira (20/02), às 09:00"' in store_open_status(datetime(2026, 2, 20, 0, 17))
+
+
+def test_closed_on_saturday_afternoon_names_monday_without_relative_word():
+    assert '"segunda-feira (09/11), às 09:00"' in store_open_status(datetime(2026, 11, 7, 14, 0))
 
 
 def test_prompt_requires_payment_conditions_for_a_specific_product():
