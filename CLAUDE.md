@@ -16,7 +16,7 @@ every business rule (prices, installments, availability, return deadlines, ident
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl          # build data/processed/emporio.db from data/raw + data/curated
-pytest -q                           # offline test suite (no API calls), 129 tests
+pytest -q                           # offline test suite (no API calls), 136 tests
 pytest -q --cov=emporio --cov-report=term-missing:skip-covered   # as CI runs it; coverage must be >= 80%
 python -m emporio.chat --trace      # terminal chat; needs .env (see .env.example)
 python -m emporio.web               # web UI + API on http://127.0.0.1:8000 (HOST/PORT honored); needs .env

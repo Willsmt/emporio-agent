@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Mel, assistente do Empório da Música">
+  <circle cx="100" cy="100" r="96" fill="#2B2118"/>
+  <ellipse cx="62" cy="92" rx="22" ry="15" fill="#DDF1FF" transform="rotate(-25 62 92)"/>
+  <ellipse cx="138" cy="92" rx="22" ry="15" fill="#DDF1FF" transform="rotate(25 138 92)"/>
+  <circle cx="100" cy="112" r="46" fill="#FFC23A"/>
+  <path d="M60 128 H140" stroke="#2B2118" stroke-width="10" stroke-linecap="round"/>
+  <path d="M68 146 H132" stroke="#2B2118" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="86" cy="104" r="6" fill="#2B2118"/><circle cx="114" cy="104" r="6" fill="#2B2118"/>
+  <path d="M90 114 Q100 121 110 114" fill="none" stroke="#2B2118" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#FFC23A">
+    <path d="M84 70 L80 40" stroke="#FFC23A" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="76" cy="40" rx="7" ry="5.5" transform="rotate(-20 76 40)"/>
+    <path d="M116 70 L120 34" stroke="#FFC23A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M120 34 Q131 39 128 50" fill="none" stroke="#FFC23A" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <path d="M58 106 A42 42 0 0 1 142 106" fill="none" stroke="#B48CF2" stroke-width="7" stroke-linecap="round"/>
+  <rect x="49" y="98" width="15" height="24" rx="6" fill="#B48CF2"/>
+  <rect x="136" y="98" width="15" height="24" rx="6" fill="#B48CF2"/>
+  <path d="M57 122 Q60 140 82 136" fill="none" stroke="#B48CF2" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="85" cy="136" r="5" fill="#B48CF2"/>
+</svg>

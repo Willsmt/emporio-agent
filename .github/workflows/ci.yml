@@ -106,7 +106,9 @@ jobs:
       - name: Smoke checks
         run: |
           set -euo pipefail
-          curl -fsS http://127.0.0.1:8000/ | grep -qi "<html"
+          curl -fsS http://127.0.0.1:8000/ | grep -q "/api/storefront"
+          curl -fsS http://127.0.0.1:8000/chat | grep -qi "<html"
+          curl -fsS http://127.0.0.1:8000/api/storefront | grep -q "categories"
           curl -fsS -X POST http://127.0.0.1:8000/api/sessions | grep -q "session_id"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/docs)" = "404"
           test "$(docker exec emporio id -u)" = "10001"

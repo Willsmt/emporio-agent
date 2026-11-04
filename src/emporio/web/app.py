@@ -3,6 +3,7 @@
 Run locally with: python -m emporio.web
 """
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -38,7 +39,8 @@ class ChatResponse(BaseModel):
 
 def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = None,
                sessions: SessionStore | None = None, limiter: SlidingWindowLimiter | None = None,
-               demo_mode: bool = False, daily_limiter: SlidingWindowLimiter | None = None) -> FastAPI:
+               demo_mode: bool = False, daily_limiter: SlidingWindowLimiter | None = None,
+               storefront: Callable[[], dict] | None = None) -> FastAPI:
     """In demo mode the API also exposes the model, the tool trace and the Swagger docs, for technical review.
 
     Off by default: in production those are internal details (stack fingerprinting, tool map for prompt injection).
@@ -95,8 +97,20 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
         return ChatResponse(reply=reply.text, tool_trace=reply.tool_trace if demo_mode else None,
                             messages_left=messages_left)
 
+    @app.get("/api/storefront")
+    def storefront_data(request: Request) -> dict:
+        """Read-only store front data (contact, hours, categories, promotions); never touches the agent."""
+        check_rate_limit(request)
+        if storefront is None:
+            raise HTTPException(status_code=404, detail="Vitrine indisponível.")
+        return storefront()
+
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
+    def store_page() -> FileResponse:
+        return FileResponse(STATIC_DIR / "store.html")
+
+    @app.get("/chat", include_in_schema=False)
+    def chat_page() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

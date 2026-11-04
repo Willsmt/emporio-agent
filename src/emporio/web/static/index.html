@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Empório da Música — Atendimento</title>
+<link rel="icon" href="/static/mel_icon.svg" type="image/svg+xml">
 <style>
   :root {
     --ink: #1d1a17;
@@ -75,11 +76,12 @@
     font-size: 12.5px; padding: 8px 20px; text-align: center;
   }
   .demo-banner strong { color: #5a3d00; }
+  body.embed header { padding-right: 52px; } /* room for the store widget's close button */
 </style>
 </head>
 <body>
 <header>
-  <div class="logo" aria-hidden="true">♪</div>
+  <img class="logo" src="/static/mel_icon.svg" alt="" aria-hidden="true">
   <div>
     <h1>Empório da Música</h1>
     <p>Mel, assistente virtual<span id="model"></span></p>
@@ -103,6 +105,7 @@
 </main>
 
 <script>
+if (new URLSearchParams(location.search).has("embed")) document.body.classList.add("embed");
 const SUGGESTIONS = [
   "Quais violões vocês têm até R$ 1000?",
   "Quanto custa o Takamine GD20?",
@@ -202,6 +205,11 @@ async function submit(text) {
   }
 }
 
+// Embedded in the store page: accept questions only from the same origin (the "Perguntar à Mel" buttons).
+window.addEventListener("message", (e) => {
+  if (e.origin !== location.origin || !e.data || typeof e.data.ask !== "string") return;
+  submit(e.data.ask.slice(0, 1000));
+});
 form.addEventListener("submit", (e) => { e.preventDefault(); submit(input.value); });
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(input.value); }
@@ -214,7 +222,9 @@ fetch("/health").then((r) => r.json()).then((h) => {
     if (h.model) document.getElementById("model").textContent = ` · ${h.provider}/${h.model}`;
   }
 }).catch(() => {});
-startSession().catch((e) => addMessage("error", e.message));
+startSession().then(() => {
+  if (window.parent !== window) window.parent.postMessage({ ready: true }, location.origin);
+}).catch((e) => addMessage("error", e.message));
 </script>
 </body>
 </html>

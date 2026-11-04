@@ -6,9 +6,11 @@ import sys
 import uvicorn
 
 from emporio.agent.factory import build_agent
-from emporio.config import PROCESSED_DIR
+from emporio.config import DB_PATH, PROCESSED_DIR
 from emporio.settings import SettingsError, load_settings
+from emporio.tools.db import connect_readonly
 from emporio.web.app import create_app
+from emporio.web.storefront import build_storefront
 from emporio.web.transcripts import TranscriptStore
 
 
@@ -17,6 +19,7 @@ def main() -> int:
     try:
         settings = load_settings()
         agent = build_agent(settings)
+        storefront_conn = connect_readonly(DB_PATH)
     except (SettingsError, FileNotFoundError) as exc:
         print(f"Configuration error: {exc}")
         return 1
@@ -25,6 +28,7 @@ def main() -> int:
         TranscriptStore(PROCESSED_DIR / "transcripts.db"),
         info={"provider": settings.provider, "model": settings.model},
         demo_mode=settings.demo_mode,
+        storefront=lambda: build_storefront(storefront_conn, settings.now()),
     )
     # Behind a platform proxy, set FORWARDED_ALLOW_IPS to the proxy address (or "*") so the rate limit
     # sees each client's real IP from X-Forwarded-For instead of the proxy's.

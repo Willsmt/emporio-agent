@@ -208,3 +208,23 @@ unit test pins product 91 to `steel`, the case the name does not reveal.
 
 **Consequences.** One more field per product in search results (only for products with strings). Same principle as
 the rest of the design: facts come from tools, the model only words them.
+
+## ADR-017 — Store front page and chat widget, without touching the agent
+
+**Context.** The challenge asks for a persona aligned with the store's identity and allows a simple interface. After
+the agent was done and evaluated (19/19), there was time for a front end. The risky version (product pages with
+links sent by the agent) would change tool output, prompt and evaluation on the delivery day.
+
+**Decision.** Only the front end changes. `/` is now a store front: open status, categories with available counts,
+active promotions, hours and address. The existing chat moved to `/chat` and opens in a widget (iframe) from a
+mascot button; "Perguntar à Mel" buttons send a question to the chat with `postMessage`, accepted only from the same
+origin. The page reads `GET /api/storefront`, which reuses the agent's sources (`PRODUCT_QUERY`, `availability`,
+`OPENING_HOURS`, the curated policy table), so page and assistant cannot disagree. Categories with no available
+product are hidden (clarification A3). The mascot, Mel as a bee, is an original SVG; no product photos are used.
+
+**Evidence.** Unit tests for the storefront data (contact from the policy, grouped hours, open and closed status in
+store time, hidden empty categories, sorted promotions) and for the routes; the Docker smoke test now checks `/`,
+`/chat` and `/api/storefront`. The agent code, prompt and tools are unchanged.
+
+**Consequences.** One more read-only endpoint, rate limited like the rest. Product pages and deep links stay as
+future work.

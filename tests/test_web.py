@@ -64,10 +64,21 @@ def test_production_mode_hides_internals(conn, tmp_path):
     assert body["tool_trace"] is None
 
 
-def test_index_page_is_served(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "Empório da Música" in response.text
+def test_store_page_and_chat_page_are_served(client):
+    store, chat = client.get("/"), client.get("/chat")
+    assert store.status_code == chat.status_code == 200
+    assert 'id="fab"' in store.text and "/api/storefront" in store.text
+    assert 'id="log"' in chat.text and "postMessage" in chat.text
+
+
+def test_storefront_endpoint_returns_injected_data(conn, tmp_path):
+    agent = Agent(ReplyingProvider(), build_tools(conn, today=lambda: date(2026, 11, 3)), system_prompt=lambda: "p")
+    app = create_app(agent, TranscriptStore(tmp_path / "t.db"), storefront=lambda: {"categories": [{"name": "Violões"}]})
+    assert TestClient(app).get("/api/storefront").json() == {"categories": [{"name": "Violões"}]}
+
+
+def test_storefront_endpoint_is_404_when_not_configured(client):
+    assert client.get("/api/storefront").status_code == 404
 
 
 def test_chat_returns_reply_and_tool_trace(client):

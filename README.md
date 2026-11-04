@@ -14,7 +14,7 @@ chooses which tool to call and turns the result into a friendly answer.
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Live demo | [Live demo](#live-demo) |
 | Technical decisions, in short                                | [Technical decisions](#technical-decisions)                                                                    |
-| Decision log (16 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
+| Decision log (17 ADRs, with the evidence behind each change) | [`docs/decisions.md`](docs/decisions.md)                                                                       |
 | Data quality findings and assumptions                        | [`docs/data-quality.md`](docs/data-quality.md)                                                                 |
 | Behavioral evaluation report (19/19)                         | [`evals/report.md`](evals/report.md)                                                                           |
 | Example conversations (5)                                    | [`conversations/`](conversations/)                                                                             |
@@ -25,6 +25,8 @@ chooses which tool to call and turns the result into a friendly answer.
 
 **https://emporio-agent-580393723122.southamerica-east1.run.app**
 
+The home page is a small store front for the fictional store, with categories, active promotions, hours and address
+read from the same data the agent uses, and Mel (an original bee mascot) opens the chat from the corner button.
 Hosted on Google Cloud Run with OpenAI `gpt-6-luna` and `DEMO_MODE=true`, so each answer shows the model and the
 tools it called. Try a price ("Quanto custa o Takamine GD20?"), a policy ("Posso devolver um produto?"), an order
 status (you will be asked for the e-mail or phone on file) and something off-topic.
@@ -51,7 +53,7 @@ Requires Python 3.11+ (CI runs 3.11, 3.12 and 3.13) and an API key for Gemini or
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m emporio.data.etl        # builds data/processed/emporio.db from data/raw + data/curated
-pytest -q                         # 129 offline tests, no API calls
+pytest -q                         # 136 offline tests, no API calls
 cp .env.example .env              # set LLM_PROVIDER and LLM_API_KEY
 ```
 
@@ -169,7 +171,7 @@ providers are supported.
 
 | Job                          | Checks                                                                                                               |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `tests (3.11 / 3.12 / 3.13)` | 129 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
+| `tests (3.11 / 3.12 / 3.13)` | 136 offline tests; coverage must stay at 80% or more (currently ~84%); a leaked SQLite connection fails the suite    |
 | `security (bandit + pip-audit)`                | Bandit (static analysis) and pip-audit (known vulnerabilities in dependencies)                                       |
 | `secrets (gitleaks)`                    | gitleaks over the full git history                                                                                   |
 | `complexity (no block ranked D or worse)`                 | No function ranked D or worse in cyclomatic complexity                                                               |
@@ -206,6 +208,7 @@ command above, and the report is committed as evidence.
 - Stream answers to the web page, so long replies feel faster.
 - A handoff flow: when the agent cannot help, open a ticket for the staff with the conversation summary.
 - Connect the tools to the store's real systems instead of exported files.
+- Product pages on the store front, with the search tool returning each product's link so Mel can send it.
 
 ## How I used AI in this project
 
@@ -236,7 +239,7 @@ src/emporio/data/        ETL and database schema
 src/emporio/tools/       deterministic business tools
 src/emporio/agent/       agent loop, prompts, provider adapters
 src/emporio/evaluation/  behavioral scenarios and runner
-src/emporio/web/         FastAPI app, sessions, rate limits, transcripts, UI
+src/emporio/web/         FastAPI app, sessions, rate limits, transcripts, store page and chat UI
 tests/                   offline test suite
 docs/                    decisions, data quality, security and complexity reports
 evals/, conversations/   evaluation report and recorded conversations
