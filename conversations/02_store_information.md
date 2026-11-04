@@ -3,7 +3,7 @@
 > Address, opening hours and the official phone (contradiction A1 resolved).
 
 - Model: `openai/gpt-6-luna`
-- Recorded at: 2026-11-04 00:23
+- Recorded at: 2026-11-04 01:06
 
 ---
 
@@ -11,9 +11,9 @@
 
 *Tools: `get_policy({'section': 'about_store'})`*
 
-**Mel:** A loja fica na Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, 79202-333. 😊
+**Mel:** A loja fica na Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, CEP 79202-333.
 
-O time humano volta amanhã, quarta-feira (04/11), às 09:00.
+A loja abre hoje, quarta-feira (04/11), às 09:00.
 
 ---
 
@@ -21,7 +21,7 @@ O time humano volta amanhã, quarta-feira (04/11), às 09:00.
 
 *Tools: `get_policy({'section': 'opening_hours'})`*
 
-**Mel:** Sim! Aos sábados, abrimos das 09:00 às 13:00.
+**Mel:** Sim! Aos sábados, a loja abre às 09:00 e fecha às 13:00.
 
 ---
 
@@ -29,6 +29,6 @@ O time humano volta amanhã, quarta-feira (04/11), às 09:00.
 
 *Tools: `get_policy({'section': 'about_store'})`*
 
-**Mel:** O WhatsApp oficial é **(67) 3341-4444**.
+**Mel:** Nosso WhatsApp é **(67) 3341-4444**.
 
 ---

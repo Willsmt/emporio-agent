@@ -3,24 +3,23 @@
 > Real-time catalog query with a budget filter, then installment and PIX rules applied by the tools.
 
 - Model: `openai/gpt-6-luna`
-- Recorded at: 2026-11-04 00:23
+- Recorded at: 2026-11-04 01:06
 
 ---
 
 **Cliente:** Oi! Quero começar a tocar violão e tenho até uns R$ 1000. O que vocês têm?
 
-*Tools: `search_products({'query': 'violão iniciante', 'category': 'Violões', 'max_price': 1000, 'available_only': True})`, `search_products({'query': 'violão', 'category': 'Violões', 'max_price': 1000, 'available_only': True})`, `search_products({'query': '', 'category': 'Violões', 'max_price': 1000, 'available_only': True})`*
+*Tools: `search_products({'query': 'violão', 'category': 'Violões', 'max_price': 1000, 'available_only': True})`, `search_products({'query': '', 'category': 'Violões', 'max_price': 1000, 'available_only': True})`, `get_policy({'section': 'opening_hours'})`*
 
-**Mel:** Oi! 😊 Temos **12 opções disponíveis por até R$ 1.000**. Pra começar, algumas delas:
+**Mel:** Oi! A loja abre hoje, quarta-feira (04/11), às 09:00 😊
 
-- **Tagima Memphis AC-39 Nylon** — R$ 429,90  
-- **Rozini RC-104 Nylon Estudante** — R$ 459,90  
-- **Yamaha C40 Nylon** — R$ 599,90  
-- **Shelby SN-100 Folk Aço** — R$ 549,00  
-- **Yamaha F310 Aço** — R$ 699,90  
-- **Shelby SGD-195E Elétrico Aço** — R$ 799,00  
+Temos **12 opções disponíveis até R$ 1.000**, entre elas:
 
-Posso filtrar melhor pra você: prefere **cordas de nylon** ou **de aço**? O time humano volta **amanhã, quarta-feira (04/11), às 09:00**.
+**Nylon:** Tagima Memphis AC-39 — R$ 429,90; Rozini RC-104 — R$ 459,90; Yamaha C40 — R$ 599,90; Giannini GN-15 — R$ 689,00; Yamaha C70 — R$ 849,00.
+
+**Aço:** Shelby SN-100 — R$ 549,00; Giannini GF-1R — R$ 579,90; Yamaha F310 — R$ 699,90; Tagima Dallas Tuner — R$ 749,00; Tagima Woodstock — R$ 899,00; Tagima TW-7 de 7 cordas — R$ 999,00.
+
+Também há um Shelby SGD-195E elétrico de aço por R$ 799,00. Quer que eu te ajude a escolher entre **nylon e aço**?
 
 ---
 
@@ -28,7 +27,9 @@ Posso filtrar melhor pra você: prefere **cordas de nylon** ou **de aço**? O ti
 
 *Tools: `get_product({'product_id': 81})`, `get_policy({'section': 'payment'})`*
 
-**Mel:** O Yamaha C40 fica **R$ 569,91 no PIX**. No cartão, dá pra parcelar em até **6x de R$ 99,98 sem juros**.
+**Mel:** O Yamaha C40 está disponível 😊
+
+No PIX fica **R$ 569,91**. No cartão, dá para parcelar em até **6x sem juros de R$ 99,98**.
 
 ---
 
@@ -36,6 +37,6 @@ Posso filtrar melhor pra você: prefere **cordas de nylon** ou **de aço**? O ti
 
 *Tools: `get_policy({'section': 'about_store'})`*
 
-**Mel:** Não vendemos cordas avulsas — trabalhamos apenas com instrumentos musicais. Posso te ajudar com outro violão ou instrumento 😊
+**Mel:** A loja não vende cordas avulsas — trabalhamos exclusivamente com instrumentos musicais. Posso ajudar com algum violão ou outro instrumento?
 
 ---
