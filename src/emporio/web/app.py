@@ -22,6 +22,7 @@ STATIC_DIR = Path(__file__).with_name("static")
 MAX_MESSAGE_CHARS = 1000
 MAX_MESSAGES_PER_SESSION = 30
 REQUESTS_PER_MINUTE_PER_CLIENT = 20
+MAX_MESSAGES_PER_DAY = 500  # global spend cap across all clients
 
 
 class ChatRequest(BaseModel):
@@ -37,16 +38,20 @@ class ChatResponse(BaseModel):
 
 def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = None,
                sessions: SessionStore | None = None, limiter: SlidingWindowLimiter | None = None,
-               demo_mode: bool = False) -> FastAPI:
+               demo_mode: bool = False, daily_limiter: SlidingWindowLimiter | None = None) -> FastAPI:
     """In demo mode the API also exposes the model, the tool trace and the Swagger docs, for technical review.
 
     Off by default: in production those are internal details (stack fingerprinting, tool map for prompt injection).
     """
     app = FastAPI(title="Empório da Música — customer service agent",
                   docs_url="/api/docs" if demo_mode else None, redoc_url=None, openapi_url="/api/openapi.json" if demo_mode else None)
-    sessions = sessions or SessionStore()
-    limiter = limiter or SlidingWindowLimiter(REQUESTS_PER_MINUTE_PER_CLIENT, 60)
+    # "is None", not "or": an empty store or limiter defines __len__ == 0 and would be falsy
+    sessions = SessionStore() if sessions is None else sessions
+    limiter = SlidingWindowLimiter(REQUESTS_PER_MINUTE_PER_CLIENT, 60) if limiter is None else limiter
+    daily_limiter = SlidingWindowLimiter(MAX_MESSAGES_PER_DAY, 24 * 60 * 60) if daily_limiter is None else daily_limiter
     info = info or {}
+    if demo_mode:
+        logger.warning("DEMO_MODE is on: model, tool trace and API docs are exposed. Do not use in production.")
 
     def check_rate_limit(request: Request) -> None:
         client = request.client.host if request.client else "unknown"
@@ -75,6 +80,8 @@ def create_app(agent: Agent, transcripts: TranscriptStore, info: dict | None = N
         with session.lock:
             if session.message_count >= MAX_MESSAGES_PER_SESSION:
                 raise HTTPException(status_code=429, detail="Limite de mensagens desta conversa atingido.")
+            if not daily_limiter.allow("global"):
+                raise HTTPException(status_code=429, detail="O assistente atingiu o limite diário de atendimentos. Volte amanhã.")
             try:
                 reply = agent.run(session.history, text)
             except ProviderError:

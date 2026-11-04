@@ -35,7 +35,8 @@ def run_turns(settings: Settings, turns: tuple[str, ...], store_today: date | No
     return records
 
 
-STATUS_ICONS = {"pass": "✅", "fail": "❌", "error": "⚠️"}
+# Bandit B105 false positive: the key "pass" is an evaluation status, not a password.
+STATUS_ICONS = {"pass": "✅", "fail": "❌", "error": "⚠️"}  # nosec B105
 
 
 def run_scenario(settings: Settings, scenario: Scenario) -> dict:

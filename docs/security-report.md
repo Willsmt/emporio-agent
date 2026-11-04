@@ -71,3 +71,19 @@ Uvicorn logs requests at request-line level only, so customer message bodies are
 
 - Dynamic testing (Strix or manual runtime probing), including live prompt-injection attempts against `/api/chat`. Running it needs explicit authorization, the app running locally with `DEMO_MODE` off, a budget cap, and acceptance that it spends real API credit.
 - Infrastructure and hosting configuration beyond the Dockerfile.
+
+## Resolution
+
+Fixed in the commit following this report (`fix(security): ...`), decided in the chat workflow:
+
+| Finding | Resolution |
+|---|---|
+| Bandit B105 / B608 false positives | Line-level `# nosec` with the justification in a comment above each |
+| Phone masking missed `+55`, spaces and dots | Broader regex; tests cover five formats and confirm prices are not masked |
+| Rate limit behind a proxy sees the proxy IP | Uvicorn `proxy_headers` with `FORWARDED_ALLOW_IPS`, set per deployment |
+| No global spend cap | Global daily cap of 500 chat messages (HTTP 429) |
+| Limiter `_hits` grows unbounded | Stale keys pruned when tracking more than 10,000 clients |
+| `DEMO_MODE=true` in production | Warning logged at startup when demo mode is on |
+| No per-order attempt limit | Accepted risk: the e-mail/phone space makes brute force impractical under the existing per-session (30) and per-IP (20/min) limits |
+
+While fixing, the tests caught a bug introduced by the fix itself: giving the limiter a `__len__` made an empty limiter falsy, so `limiter or default` silently replaced injected limiters. Defaults now use `is None`.

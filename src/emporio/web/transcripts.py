@@ -12,7 +12,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
-PHONE = re.compile(r"\(?\d{2}\)?\s?9?\d{4}-?\d{4}")
+# Brazilian phones in any common format: +55, area code with or without parentheses, spaces, dots or dashes
+PHONE = re.compile(r"(?:\+?55[\s.-]?)?\(?\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS messages (

@@ -133,7 +133,9 @@ def test_rate_limit_per_client(conn, tmp_path):
 @pytest.mark.parametrize("text, expected", [
     ("meu email é Ana.Souza+loja@mail.com.br", "meu email é ***"),
     ("liga no (67) 99812-3456 ou 67998123456", "liga no *** ou ***"),
-    ("pedido 7", "pedido 7"),
+    ("meu cel +55 67 99812-3456", "meu cel ***"),
+    ("tel 67 99812 3456 ou 67.99812.3456", "tel *** ou ***"),
+    ("pedido 7, total R$ 2.199,00", "pedido 7, total R$ 2.199,00"),
 ])
 def test_mask_contacts(text, expected):
     assert mask_contacts(text) == expected
@@ -160,3 +162,25 @@ def test_sliding_window_limiter():
     assert limiter.allow("b")
     now[0] = 61
     assert limiter.allow("a")
+
+
+def test_limiter_memory_stays_bounded():
+    now = [0.0]
+    limiter = SlidingWindowLimiter(5, 60, clock=lambda: now[0], max_keys=3)
+    for ip in ("a", "b", "c"):
+        limiter.allow(ip)
+    now[0] = 120                      # all three are outside the window now
+    limiter.allow("d")                # tracking a new key at capacity prunes the stale ones
+    assert len(limiter) == 1
+
+
+def test_global_daily_cap(conn, tmp_path):
+    agent = Agent(ReplyingProvider(), build_tools(conn, today=lambda: date(2026, 11, 3)), system_prompt=lambda: "p")
+    app = create_app(agent, TranscriptStore(tmp_path / "t.db"), limiter=SlidingWindowLimiter(1000, 60),
+                     daily_limiter=SlidingWindowLimiter(1, 86400))
+    client = TestClient(app)
+    first, second = new_session(client), new_session(client)
+    assert client.post("/api/chat", json={"session_id": first, "message": "oi"}).status_code == 200
+    blocked = client.post("/api/chat", json={"session_id": second, "message": "oi"})
+    assert blocked.status_code == 429
+    assert "limite diário" in blocked.json()["detail"]

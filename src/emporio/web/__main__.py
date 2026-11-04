@@ -26,7 +26,15 @@ def main() -> int:
         info={"provider": settings.provider, "model": settings.model},
         demo_mode=settings.demo_mode,
     )
-    uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8000")))
+    # Behind a platform proxy, set FORWARDED_ALLOW_IPS to the proxy address (or "*") so the rate limit
+    # sees each client's real IP from X-Forwarded-For instead of the proxy's.
+    uvicorn.run(
+        app,
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "8000")),
+        proxy_headers=True,
+        forwarded_allow_ips=os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1"),
+    )
     return 0
 
 

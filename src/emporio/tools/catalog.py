@@ -104,8 +104,9 @@ def search_products(
 
 
 def find_alternatives(conn: sqlite3.Connection, row: sqlite3.Row) -> list[dict]:
+    # Bandit B608 false positive: only constant SQL fragments are concatenated; values are bound parameters.
     candidates = conn.execute(
-        PRODUCT_QUERY + " WHERE p.category_id = (SELECT category_id FROM products WHERE product_id = ?)"
+        PRODUCT_QUERY + " WHERE p.category_id = (SELECT category_id FROM products WHERE product_id = ?)"  # nosec B608
         " AND p.product_id != ?",
         (row["product_id"], row["product_id"]),
     ).fetchall()
