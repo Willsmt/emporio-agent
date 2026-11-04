@@ -69,3 +69,12 @@ form button:disabled { opacity: .5; cursor: default; }
 }
 .demo-banner strong { color: #5a3d00; }
 body.embed header { padding-right: 52px; } /* room for the store widget's close button */
+/* Compact header in the store widget so the conversation gets the space. */
+body.embed header { padding: 8px 52px 8px 12px; gap: 10px; border-bottom-width: 3px; }
+body.embed .logo { width: 32px; height: 32px; }
+body.embed header > div:not(.spacer) { min-width: 0; }
+body.embed header h1, body.embed header p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.embed header h1 { font-size: 15px; }
+body.embed header p { font-size: 11.5px; }
+body.embed header button { padding: 4px 10px; font-size: 12px; }
+body.embed .demo-banner { font-size: 11px; line-height: 1.35; padding: 4px 12px; }
