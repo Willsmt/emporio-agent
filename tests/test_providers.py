@@ -66,3 +66,21 @@ def test_gemini_retries_transient_errors():
     assert RETRY_OPTIONS.attempts == 4
     assert {429, 503} <= set(RETRY_OPTIONS.http_status_codes)
     GeminiProvider(api_key="fake-key", model="m")  # builds a real client offline with the retry options
+
+
+def test_gemini_without_content_raises_provider_error():
+    import pytest
+
+    from emporio.agent.providers.base import ProviderError
+
+    with pytest.raises(ProviderError, match="no content"):
+        GeminiProvider.parse_response(types.GenerateContentResponse(candidates=[]))
+
+
+def test_gemini_call_without_id_or_args_gets_fallbacks():
+    content = types.Content(role="model", parts=[
+        types.Part(text="ok"),
+        types.Part(function_call=types.FunctionCall(name="get_policy")),
+    ])
+    turn = GeminiProvider.parse_response(types.GenerateContentResponse(candidates=[types.Candidate(content=content)]))
+    assert turn.tool_calls == [ToolCall("call_1", "get_policy", {})]

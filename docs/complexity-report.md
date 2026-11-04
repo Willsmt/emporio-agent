@@ -105,3 +105,15 @@ code that handles Gemini thought signatures (invariant 4) is delicate.
 **Action instead:** `tests/test_providers.py` covers function calls, the raw content being kept, and thought parts
 being ignored. It does **not** cover the `ProviderError` path (no candidates, or `content is None`), the
 `call_{i}` id fallback, or `args=None`. Add those edge-case tests. A short comment on the block is optional.
+
+## Resolution
+
+Applied in the commit following this report (`refactor(tools): ...`), following the refactoring plan above:
+
+| Block | Before | After | Action |
+|---|---|---|---|
+| `search_products` | D (28) | A | Pattern 7: `SearchCriteria` + named predicates (`_matches_text`, `_in_category`, `_within_budget`) and one small function per response annotation. `list_categories` is now called once. The price filter stays in Python (it uses the promotional price) and says so in a comment. Largest block in the module is now B (9). |
+| `GeminiProvider.parse_response` | C (11) | C (11) | Not refactored ("When not to refactor": parser of an external format). Two tests added for the uncovered paths: no content (`ProviderError`) and a call without id or args. |
+| `runner.main` | C (12) | C (12) | Deferred: internal evaluation CLI with no business rules; refactor with a test when the file next changes. |
+
+The existing unit tests passed unchanged after the refactor, which is the evidence that behavior was preserved. Gate result after the change: no block ranked D or worse.
