@@ -1,5 +1,6 @@
 import re
 import sqlite3
+from contextlib import closing
 
 import pytest
 from pypdf import PdfReader
@@ -62,6 +63,6 @@ def test_contradictions_are_documented(curated_text):
 
 def test_policies_loaded_into_database(tmp_path):
     db_path = build_database(db_path=tmp_path / "test.db")
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         rows = conn.execute("SELECT slug FROM policy_sections ORDER BY number").fetchall()
     assert [slug for (slug,) in rows] == list(SECTION_SLUGS.values())

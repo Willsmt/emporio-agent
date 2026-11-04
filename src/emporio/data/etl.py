@@ -5,6 +5,7 @@ Run with: python -m emporio.data.etl
 import json
 import logging
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pandas as pd
@@ -87,7 +88,8 @@ def build_database(
     tmp_path = db_path.with_suffix(".tmp")
     tmp_path.unlink(missing_ok=True)
 
-    with sqlite3.connect(tmp_path) as conn:
+    # sqlite3's own context manager only commits or rolls back; closing() releases the file before replace().
+    with closing(sqlite3.connect(tmp_path)) as conn, conn:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         for table in TABLES:
             tables[table].to_sql(table, conn, if_exists="append", index=False)

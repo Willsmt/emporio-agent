@@ -23,7 +23,7 @@ def test_scenarios_and_conversations_are_well_formed():
     assert 3 <= len(CONVERSATIONS) <= 5  # challenge deliverable
 
 
-def test_runner_writes_report_and_transcript_offline(monkeypatch, tmp_path, db_path):
+def test_runner_writes_report_and_transcript_offline(monkeypatch, tmp_path, conn):
     from datetime import date
 
     from emporio.agent.agent import Agent
@@ -32,7 +32,6 @@ def test_runner_writes_report_and_transcript_offline(monkeypatch, tmp_path, db_p
     from emporio.evaluation import runner
     from emporio.evaluation.scenarios import Conversation, Scenario
     from emporio.settings import Settings
-    from emporio.tools.db import connect_readonly
     from fakes import ScriptedProvider, tool_call
 
     def fake_agent(settings):
@@ -40,7 +39,7 @@ def test_runner_writes_report_and_transcript_offline(monkeypatch, tmp_path, db_p
             ModelTurn(text="", tool_calls=[tool_call("get_product", product_id=95)]),
             ModelTurn(text="Custa R$ 2.199,00 ou R$ 2.089,05 no PIX.", tool_calls=[]),
         ])
-        tools = build_tools(connect_readonly(db_path), today=lambda: date(2026, 11, 2))
+        tools = build_tools(conn, today=lambda: date(2026, 11, 2))
         return Agent(provider, tools, system_prompt=lambda: "p")
 
     monkeypatch.setattr(runner, "build_agent", fake_agent)

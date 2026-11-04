@@ -28,6 +28,8 @@ emporio = ["data/schema.sql", "web/static/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["llm: calls a real LLM provider (requires LLM_API_KEY); skipped otherwise"]
+# A leaked SQLite connection fails the suite instead of printing a warning.
+filterwarnings = ["error::ResourceWarning", "error::pytest.PytestUnraisableExceptionWarning"]
 
 [tool.coverage.run]
 source = ["emporio"]
